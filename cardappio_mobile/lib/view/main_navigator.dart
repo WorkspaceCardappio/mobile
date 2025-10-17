@@ -6,10 +6,12 @@ import 'package:cardappio_mobile/view/screens/payment/payment_screen.dart';
 import 'package:cardappio_mobile/view/screens/ticket/ticket_screen.dart';
 import 'package:flutter/material.dart';
 
+import '../data/mock_data.dart';
 import '../model/cart_item.dart';
 import '../model/menu.dart';
 import '../model/product.dart';
 import 'common/permanent_sidebar.dart';
+import 'common/sidebar_category_menu.dart'; // NOVO IMPORT
 
 class MainNavigator extends StatefulWidget {
   final int initialIndex;
@@ -19,13 +21,15 @@ class MainNavigator extends StatefulWidget {
   State<MainNavigator> createState() => _MainNavigatorState();
 }
 
-class _MainNavigatorState extends State<MainNavigator> with _CartManager, _NavigationManager {
-  Menu? _activeMenu;
+class _MainNavigatorState extends State<MainNavigator> with _CartManager, _NavigationManager, _CategoryManager {
+  Menu? _activeMenu; // Definido aqui
 
   @override
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex;
+    // Inicializa a categoria com a primeira ao iniciar o navegador
+    _selectedCategoryName = mockCategories.first.name;
     _initializeScreens();
   }
 
@@ -54,15 +58,16 @@ class _MainNavigatorState extends State<MainNavigator> with _CartManager, _Navig
     }
     return MenuDetailScreen(
       menu: _activeMenu!,
+      selectedCategoryName: _selectedCategoryName, // Propriedade do _CategoryManager
       onProductTap: _navigateToProductDetail,
     );
   }
 
   Widget _buildCartScreen() {
     return CartScreen(
-      cartItems: _cartItems,
-      cartTotal: _cartTotal,
-      onRemoveItem: _removeItemFromCart,
+      cartItems: _cartItems, // Propriedade do _CartManager
+      cartTotal: _cartTotal, // Propriedade do _CartManager
+      onRemoveItem: _removeItemFromCart, // Método do _CartManager
       onConfirmOrder: _handleOrderConfirmation,
     );
   }
@@ -70,6 +75,8 @@ class _MainNavigatorState extends State<MainNavigator> with _CartManager, _Navig
   void _handleQuickOrder(Menu menu) {
     setState(() {
       _activeMenu = menu;
+      // Define a primeira categoria ao carregar um novo menu
+      _selectedCategoryName = mockCategories.first.name;
       _selectedIndex = 0;
       _updateScreens();
     });
@@ -77,6 +84,7 @@ class _MainNavigatorState extends State<MainNavigator> with _CartManager, _Navig
 
   void _handleOrderConfirmation() {
     setState(() {
+      // Simulação de envio de pedido
       _cartItems = [];
       _updateScreens();
     });
@@ -99,6 +107,7 @@ class _MainNavigatorState extends State<MainNavigator> with _CartManager, _Navig
     }
   }
 
+  // MÉTODO DEFINIDO AQUI
   void _updateScreens() {
     _screens[0] = _buildCurrentMenuScreen();
     _screens[1] = _buildCartScreen();
@@ -121,21 +130,29 @@ class _MainNavigatorState extends State<MainNavigator> with _CartManager, _Navig
       body: Row(
         children: [
           PermanentSidebar(
-            selectedIndex: _selectedIndex,
-            cartItemCount: _cartItemCount,
+            selectedIndex: _selectedIndex, // Propriedade do _NavigationManager
+            cartItemCount: _cartItemCount, // Propriedade do _CartManager
             onTap: (index) {
-              if (index == 0 && _activeMenu == null) {
-                _onMenuItemTapped(2);
+              if (index == 0 && _activeMenu == null) { // Propriedade _activeMenu
+                _onMenuItemTapped(2); // Método do _NavigationManager
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Use "Clique para Iniciar o Pedido" na Home para carregar o Cardápio.')),
                 );
               } else {
-                _onMenuItemTapped(index);
+                _onMenuItemTapped(index); // Método do _NavigationManager
               }
+            },
+            // Passa a lógica de categoria para que o Sidebar possa construir o submenu
+            isMenuSelected: _selectedIndex == 0,
+            selectedCategoryName: _selectedCategoryName, // Propriedade do _CategoryManager
+            onCategoryTap: (categoryName) {
+              setState(() {
+                _selectedCategoryName = categoryName; // Atualiza o estado da categoria
+              });
             },
           ),
           Expanded(
-            child: _screens[_selectedIndex],
+            child: _screens[_selectedIndex], // Propriedade do _NavigationManager
           ),
         ],
       ),
@@ -154,7 +171,7 @@ class _MainNavigatorState extends State<MainNavigator> with _CartManager, _Navig
           },
           tooltip: 'Carrinho de Pedidos',
         ),
-        if (_cartItemCount > 0)
+        if (_cartItemCount > 0) // Propriedade do _CartManager
           Positioned(
             right: 5,
             top: 5,
@@ -184,21 +201,27 @@ class _MainNavigatorState extends State<MainNavigator> with _CartManager, _Navig
   }
 }
 
-mixin _NavigationManager on State<MainNavigator> {
-  late int _selectedIndex;
-  late List<Widget> _screens;
+// ----------------------------------------------------------------------------
+// MIXINS
+// ----------------------------------------------------------------------------
 
-  void _onMenuItemTapped(int index) {
+// Mixin para gerenciar a Lógica de Navegação
+mixin _NavigationManager on State<MainNavigator> {
+  late int _selectedIndex; // DEFINIÇÃO AQUI
+  late List<Widget> _screens; // DEFINIÇÃO AQUI
+
+  void _onMenuItemTapped(int index) { // DEFINIÇÃO AQUI
     setState(() {
       _selectedIndex = index;
     });
   }
 }
 
+// Mixin para gerenciar a Lógica do Carrinho
 mixin _CartManager on State<MainNavigator> {
   List<CartItem> _cartItems = [];
   double get _cartTotal => _cartItems.fold(0.0, (sum, item) => sum + item.subtotal);
-  int get _cartItemCount => _cartItems.length;
+  int get _cartItemCount => _cartItems.fold(0, (sum, item) => sum + item.quantity); // DEFINIÇÃO AQUI
 
   void _addItemToCart(Product product, int quantity) {
     setState(() {
@@ -211,17 +234,38 @@ mixin _CartManager on State<MainNavigator> {
       }
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('✅ ${quantity}x ${product.name} adicionado ao carrinho!')),
-    );
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('✅ ${quantity}x ${product.name} adicionado ao carrinho!')),
+      );
+    }
   }
 
   void _removeItemFromCart(String productId) {
     setState(() {
       _cartItems.removeWhere((item) => item.product.id == productId);
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Item removido do carrinho.')),
-    );
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Item removido do carrinho.')),
+      );
+    }
+  }
+}
+
+// Mixin para gerenciar a Lógica de Categorias
+mixin _CategoryManager on State<MainNavigator> {
+  late String _selectedCategoryName; // DEFINIÇÃO AQUI
+
+  IconData _getCategoryIcon(String iconName) {
+    switch (iconName) {
+      case 'star': return Icons.star;
+      case 'dinner_dining': return Icons.dinner_dining;
+      case 'lunch_dining': return Icons.lunch_dining;
+      case 'tapas': return Icons.tapas;
+      case 'local_bar': return Icons.local_bar;
+      case 'cake': return Icons.cake;
+      default: return Icons.category;
+    }
   }
 }

@@ -1,3 +1,4 @@
+import 'package:cardappio_mobile/view/common/sidebar_category_menu.dart';
 import 'package:flutter/material.dart';
 
 class PermanentSidebar extends StatelessWidget {
@@ -5,11 +6,21 @@ class PermanentSidebar extends StatelessWidget {
   final int cartItemCount;
   final Function(int index) onTap;
 
+  // Novos parâmetros de categoria
+  final bool isMenuSelected;
+  final String selectedCategoryName;
+  final Function(String categoryName) onCategoryTap;
+
+
   const PermanentSidebar({
     super.key,
     required this.selectedIndex,
     required this.cartItemCount,
     required this.onTap,
+    // Novos parâmetros
+    required this.isMenuSelected,
+    required this.selectedCategoryName,
+    required this.onCategoryTap,
   });
 
   @override
@@ -32,6 +43,7 @@ class PermanentSidebar extends StatelessWidget {
       ),
       child: Column(
         children: [
+          // Header (mantido por padrão)
           Container(
             padding: const EdgeInsets.only(top: 16.0, bottom: 16.0, left: 16.0),
             width: double.infinity,
@@ -40,11 +52,28 @@ class PermanentSidebar extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
             ),
           ),
+
+          // Itens de Navegação (envolvidos por Expanded/ListView para scroll)
           Expanded(
             child: ListView(
               padding: const EdgeInsets.only(top: 8.0),
               children: <Widget>[
-                _buildSidebarItem(context, 0, Icons.menu_book, 'Cardápio', selectedIndex, onTap),
+                // 1. ITEM CARDÁPIO (com sub-menu)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSidebarItem(context, 0, Icons.menu_book, 'Cardápio', selectedIndex, onTap),
+
+                    // 1.2. SUB-MENU DE CATEGORIAS
+                    SidebarCategoryMenu(
+                      isExpanded: isMenuSelected,
+                      selectedCategoryName: selectedCategoryName,
+                      onCategoryTap: onCategoryTap,
+                    ),
+                  ],
+                ),
+
+                // 2. OUTROS ITENS DE NAVEGAÇÃO
                 _buildSidebarItem(context, 1, Icons.shopping_cart, 'Carrinho ($cartItemCount)', selectedIndex, onTap),
                 _buildSidebarItem(context, 2, Icons.home, 'Home', selectedIndex, onTap),
                 _buildSidebarItem(context, 3, Icons.receipt_long, 'Comanda', selectedIndex, onTap),
@@ -58,6 +87,7 @@ class PermanentSidebar extends StatelessWidget {
   }
 }
 
+// Widget auxiliar _buildSidebarItem (mantido o mesmo)
 Widget _buildSidebarItem(
     BuildContext context,
     int index,
