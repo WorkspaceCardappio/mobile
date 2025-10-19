@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cardappio_mobile/data/mock_data.dart';
+import 'package:cardappio_mobile/model/product.dart';
 
 class SidebarCategoryMenu extends StatelessWidget {
   final bool isExpanded;
@@ -15,6 +16,7 @@ class SidebarCategoryMenu extends StatelessWidget {
 
   IconData _getCategoryIcon(String iconName) {
     switch (iconName) {
+    // ... (método _getCategoryIcon permanece o mesmo)
       case 'star': return Icons.star;
       case 'dinner_dining': return Icons.dinner_dining;
       case 'lunch_dining': return Icons.lunch_dining;
@@ -30,38 +32,50 @@ class SidebarCategoryMenu extends StatelessWidget {
     const Color defaultItemColor = Colors.white;
     final Color selectedBackgroundColor = defaultItemColor.withOpacity(0.2);
 
-    return AnimatedCrossFade(
-      // Animação para aparecer e desaparecer o sub-menu
-      duration: const Duration(milliseconds: 300),
-      crossFadeState: isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-      firstChild: const SizedBox.shrink(), // Oculto
-      secondChild: Column(
-        children: mockCategories.map((category) {
-          final isSelected = category.name == selectedCategoryName;
+    // Ajuste: A duração de saída é 0.
+    return AnimatedSize(
+      duration: Duration(milliseconds: isExpanded ? 300 : 0),
+      curve: Curves.easeInOut,
+      alignment: Alignment.topCenter,
+      child: isExpanded
+          ? Column( // O widget que expande e recolhe
+        children: [
+          // Adicionamos um Builder para forçar uma reconstrução limpa
+          // E envolvemos o conteúdo em um Opacity animado
+          AnimatedOpacity(
+            opacity: isExpanded ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 200),
+            child: Column(
+              children: mockCategories.map((category) {
+                final isSelected = category.name == selectedCategoryName;
 
-          return Padding(
-            padding: const EdgeInsets.only(left: 10.0), // Recuo para sub-menu
-            child: ListTile(
-              leading: Icon(
-                _getCategoryIcon(category.icon),
-                color: defaultItemColor.withOpacity(isSelected ? 1.0 : 0.7),
-                size: 20, // Ícones menores para sub-menu
-              ),
-              title: Text(
-                category.name,
-                style: TextStyle(
-                  color: defaultItemColor,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w400,
-                  fontSize: 15,
-                ),
-              ),
-              selected: isSelected,
-              selectedTileColor: selectedBackgroundColor,
-              onTap: () => onCategoryTap(category.name),
+                return Padding(
+                  padding: const EdgeInsets.only(left: 10.0), // Recuo para sub-menu
+                  child: ListTile(
+                    leading: Icon(
+                      _getCategoryIcon(category.icon),
+                      color: defaultItemColor.withOpacity(isSelected ? 1.0 : 0.7),
+                      size: 20,
+                    ),
+                    title: Text(
+                      category.name,
+                      style: TextStyle(
+                        color: defaultItemColor,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w400,
+                        fontSize: 15,
+                      ),
+                    ),
+                    selected: isSelected,
+                    selectedTileColor: selectedBackgroundColor,
+                    onTap: () => onCategoryTap(category.name),
+                  ),
+                );
+              }).toList(),
             ),
-          );
-        }).toList(),
-      ),
+          ),
+        ],
+      )
+          : const SizedBox.shrink(), // Garantir que o tamanho seja zero quando fechado
     );
   }
 }

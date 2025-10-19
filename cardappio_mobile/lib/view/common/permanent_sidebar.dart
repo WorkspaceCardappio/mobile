@@ -59,7 +59,10 @@ class PermanentSidebar extends StatelessWidget {
               padding: const EdgeInsets.only(top: 8.0),
               children: <Widget>[
                 // 1. ITEM CARDÁPIO (com sub-menu)
+                // ADICIONANDO A KEY DINÂMICA: Isso força o widget a ser remontado
+                // (e o AnimatedSize a reiniciar) sempre que a tela mudar ou o menu for selecionado.
                 Column(
+                  key: ValueKey('menu_group_$selectedIndex'),
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildSidebarItem(context, 0, Icons.menu_book, 'Cardápio', selectedIndex, onTap),
