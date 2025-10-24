@@ -30,7 +30,6 @@ class SidebarCategoryMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const Color defaultItemColor = Colors.white;
-    final Color selectedBackgroundColor = defaultItemColor.withOpacity(0.2);
 
     // Ajuste: A duração de saída é 0.
     return AnimatedSize(
@@ -49,24 +48,36 @@ class SidebarCategoryMenu extends StatelessWidget {
               children: mockCategories.map((category) {
                 final isSelected = category.name == selectedCategoryName;
 
-                return Padding(
-                  padding: const EdgeInsets.only(left: 10.0), // Recuo para sub-menu
+                return Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 1.0),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? Colors.white.withOpacity(0.85)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(6.0),
+                    border: isSelected
+                        ? Border.all(color: Colors.white.withOpacity(0.3), width: 1.0)
+                        : null,
+                  ),
                   child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 2.0),
                     leading: Icon(
                       _getCategoryIcon(category.icon),
-                      color: defaultItemColor.withOpacity(isSelected ? 1.0 : 0.7),
-                      size: 20,
+                      color: isSelected
+                          ? Colors.black87
+                          : defaultItemColor.withOpacity(0.8),
+                      size: 18,
                     ),
                     title: Text(
                       category.name,
                       style: TextStyle(
-                        color: defaultItemColor,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w400,
-                        fontSize: 15,
+                        color: isSelected
+                            ? Colors.black87
+                            : defaultItemColor,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                        fontSize: 14,
                       ),
                     ),
-                    selected: isSelected,
-                    selectedTileColor: selectedBackgroundColor,
                     onTap: () => onCategoryTap(category.name),
                   ),
                 );
