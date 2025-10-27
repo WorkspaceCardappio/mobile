@@ -13,22 +13,22 @@ class MenuItem {
 
 final MenuItem promoItem = MenuItem(
   name: 'Bife Grelhado com Tomate Cereja',
-  imageUrl: 'lib/images/prato.jpg', 
+  imageUrl: 'lib/images/prato.jpeg',
   price: 'R\$ 54,99', 
 );
 
 final List<MenuItem> houseRecommendations = [
   MenuItem(
       name: 'Carne Grelhada com Batata',
-      imageUrl: 'lib/images/prato.jpg', 
+      imageUrl: 'lib/images/prato.jpeg',
       price: 'R\$ 47,99'),
   MenuItem(
       name: 'Carne Grelhada com Batata',
-      imageUrl: 'lib/images/prato.jpg', 
+      imageUrl: 'lib/images/prato.jpeg',
       price: 'R\$ 47,99'),
   MenuItem(
       name: 'Carne Grelhada com Batata',
-      imageUrl: 'lib/images/prato.jpg', 
+      imageUrl: 'lib/images/prato.jpeg',
       price: 'R\$ 47,99'),
 ];
 

@@ -133,14 +133,7 @@ class _MainNavigatorState extends State<MainNavigator> with _CartManager, _Navig
             selectedIndex: _selectedIndex, // Propriedade do _NavigationManager
             cartItemCount: _cartItemCount, // Propriedade do _CartManager
             onTap: (index) {
-              if (index == 0 && _activeMenu == null) { // Propriedade _activeMenu
-                _onMenuItemTapped(2); // Método do _NavigationManager
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Use "Clique para Iniciar o Pedido" na Home para carregar o Cardápio.')),
-                );
-              } else {
-                _onMenuItemTapped(index); // Método do _NavigationManager
-              }
+              _onMenuItemTapped(index);
             },
             // Passa a lógica de categoria para que o Sidebar possa construir o submenu
             isMenuSelected: _selectedIndex == 0,
