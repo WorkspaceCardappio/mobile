@@ -25,7 +25,6 @@ final List<ProductCategory> mockCategories = [
   ProductCategory(name: 'Lanches e Burgers', icon: 'lunch_dining'),
   ProductCategory(name: 'Porções e Petiscos', icon: 'tapas'),
   ProductCategory(name: 'Bebidas', icon: 'local_bar'),
-  ProductCategory(name: 'Sobremesas', icon: 'cake'),
 ];
 
 final List<Product> mockProducts = [
