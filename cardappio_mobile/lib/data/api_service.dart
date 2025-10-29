@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../core/constants.dart';
 import '../model/category.dart';
 import '../model/menu.dart';
+import '../model/order_create_dto.dart';
 import '../model/product.dart';
 import '../model/ticket.dart';
 
@@ -94,6 +95,46 @@ class ApiService {
       throw Exception('Erro de conexão ao buscar adicionais: $e');
     }
   }
+
+  static Future<List<Ticket>> fetchAvailableTickets() async {
+    // Assumindo que seu endpoint de tickets DTO já existe
+    final String endpoint = '$kTicketsEndpoint/dto';
+    try {
+      final response = await http.get(Uri.parse(endpoint));
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(utf8.decode(response.bodyBytes));
+        // O backend retorna um objeto Page, pegamos o 'content'
+        final List<dynamic> ticketsJson = data['content'] ?? [];
+        return ticketsJson.map((json) => Ticket.fromJson(json)).toList();
+      } else {
+        throw Exception('Falha ao carregar comandas.');
+      }
+    } catch (e) {
+      throw Exception('Erro de conexão ao buscar comandas: $e');
+    }
+  }
+
+  // NOVO: Cria um novo pedido
+  static Future<void> createOrder(OrderCreateDTO order) async {
+    // Assumindo que o endpoint de pedidos é /api/orders
+    const String endpoint = '$kBaseUrl/api/orders';
+
+    try {
+      final response = await http.post(
+        Uri.parse(endpoint),
+        headers: {'Content-Type': 'application/json; charset=UTF-8'},
+        body: json.encode(order.toJson()),
+      );
+
+      // 201 Created é a resposta de sucesso para POST
+      if (response.statusCode != 201) {
+        throw Exception('Falha ao criar o pedido. Status: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erro de conexão ao criar pedido: $e');
+    }
+  }
+
 
   static Future<TicketDetail> fetchTicketDetails(String ticketId) async {
     await Future.delayed(kApiMockDelay);

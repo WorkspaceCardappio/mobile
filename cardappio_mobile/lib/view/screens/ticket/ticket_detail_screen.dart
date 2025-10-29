@@ -28,7 +28,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Comanda #${widget.ticket.id} - Mesa ${widget.ticket.tableNumber}', style: const TextStyle(fontSize: 18)),
+        title: Text('Comanda #${widget.ticket.id} - Mesa ${widget.ticket.number}', style: const TextStyle(fontSize: 18)),
         elevation: 1,
       ),
       body: FutureBuilder<TicketDetail>(

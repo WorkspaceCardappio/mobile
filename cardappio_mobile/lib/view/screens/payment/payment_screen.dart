@@ -131,7 +131,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           items: availableTickets.map((ticket) {
             return DropdownMenuItem(
               value: ticket,
-              child: Text('Mesa ${ticket.tableNumber} - Total: R\$ ${ticket.total.toStringAsFixed(2)}'),
+              child: Text('Mesa ${ticket.number} - Total: R\$ ${ticket.total.toStringAsFixed(2)}'),
             );
           }).toList(),
           onChanged: (Ticket? newValue) {
@@ -183,7 +183,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Mesa ${detail.tableNumber}', style: Theme.of(context).textTheme.titleLarge),
+                Text('Mesa ${detail.number}', style: Theme.of(context).textTheme.titleLarge),
                 Text('Comanda #${detail.id.substring(0, 4)}', style: Theme.of(context).textTheme.bodyMedium),
               ],
             ),
@@ -229,7 +229,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Comanda: Mesa ${_ticketDetail!.tableNumber} | Total: R\$ ${_ticketDetail!.total.toStringAsFixed(2)}',
+          'Comanda: Mesa ${_ticketDetail!.number} | Total: R\$ ${_ticketDetail!.total.toStringAsFixed(2)}',
           style: Theme.of(context).textTheme.titleLarge!.copyWith(fontSize: 18, color: Theme.of(context).colorScheme.secondary),
         ),
         const Divider(height: 25),

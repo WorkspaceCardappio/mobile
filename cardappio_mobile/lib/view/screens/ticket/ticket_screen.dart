@@ -102,10 +102,10 @@ class _TicketScreenState extends State<TicketScreen> {
                       contentPadding: const EdgeInsets.all(16),
                       leading: CircleAvatar(
                         backgroundColor: Theme.of(context).colorScheme.primary,
-                        child: Text(ticket.tableNumber.toString(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        child: Text(ticket.number.toString(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                       ),
                       title: Text('Comanda #${ticket.id}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                      subtitle: Text('Mesa: ${ticket.tableNumber} - Total: R\$ ${ticket.total.toStringAsFixed(2)}\nAberta em: $formattedDate'),
+                      subtitle: Text('Mesa: ${ticket.number} - Total: R\$ ${ticket.total.toStringAsFixed(2)}\nAberta em: $formattedDate'),
                       trailing: Icon(Icons.arrow_forward_ios, size: 16, color: Theme.of(context).colorScheme.secondary),
                       onTap: () => _openTicketDetails(ticket),
                     ),
