@@ -83,21 +83,21 @@ class HomeScreen extends StatelessWidget {
   Widget _buildPromotionalSection(BuildContext context, MenuItem item) {
     return Center(
       child: SizedBox(
-        width: 1000,
-        height: 500,
+        width: MediaQuery.of(context).size.width * 0.5,
+        height: 380,
         child: Stack(
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: Image.asset(
                 item.imageUrl, 
-                width: 1000,
-                height: 800,
+                width: 800,
+                height: 400,
                 fit: BoxFit.cover,
                 alignment: Alignment.center,
                 errorBuilder: (context, error, stackTrace) => Container(
-                  width: 1000,
-                  height: 800,
+                  width: 800,
+                  height: 400,
                   color: const Color.fromARGB(255, 182, 13, 13),
                   alignment: Alignment.center,
                   child: Text(
@@ -127,7 +127,7 @@ class HomeScreen extends StatelessWidget {
               child: ElevatedButton(
                 onPressed: () => _handleQuickOrder(context),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color.fromARGB(255, 48, 243, 58),
+                  backgroundColor: const Color(0xFF51CF66),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(5.0),
@@ -144,14 +144,11 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildRecommendationCard(BuildContext context, MenuItem item, Function onTap) {
-  const Color baseCardColor = Color(0xFF7c7973); 
 
   return Padding(
     padding: const EdgeInsets.only(right: 16.0), 
     child: Container(
-      width: 250, 
       decoration: BoxDecoration(
-        color: baseCardColor,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -178,7 +175,7 @@ class HomeScreen extends StatelessWidget {
               color: Colors.white,
               borderRadius: BorderRadius.vertical(bottom: Radius.circular(12)),
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 12.0),
+            padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -197,7 +194,7 @@ class HomeScreen extends StatelessWidget {
                 Text( 
                   item.price,
                   style: const TextStyle(
-                    color: Color(0xFF90EE90), 
+                    color: Color(0xFF51CF66), 
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
                   ),
@@ -220,19 +217,22 @@ class HomeScreen extends StatelessWidget {
     return Column(
       children: [
 
-        const SizedBox(height: 10),
-        _buildPromotionalSection(context, promoItem),
-        const Spacer(),
+        SizedBox(height: 10),
+        SizedBox(
+          height: MediaQuery.of(context).size.height * 0.55, 
+          child: _buildPromotionalSection(context, promoItem),
+        ),
+        SizedBox(height: 5),
     
-        Container(
+    Expanded(
+        child: Container(
         color: Color(0xFF7c7973),
         width: double.infinity,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
           children: [
             Padding(
-              padding: const EdgeInsets.only(left: 29.0, top: 16.0),
+              padding: const EdgeInsets.only(left: 22.0, top: 5.0, bottom: 1),
               child: const Text(
                 'Recomendações da casa',
                 style: TextStyle(
@@ -244,10 +244,10 @@ class HomeScreen extends StatelessWidget {
             ),
         
         SizedBox(
-          height: 320, 
+          height: MediaQuery.of(context).size.height * 0.3,
           width: screenWidth,
           child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
             scrollDirection: Axis.horizontal,
             itemCount: houseRecommendations.length,
             itemBuilder: (context, index) {
@@ -266,7 +266,9 @@ class HomeScreen extends StatelessWidget {
       ],
         ),
         ),
+    ),
        ],
     );
   }
 }
+
