@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../core/constants.dart';
 import '../model/category.dart';
 import '../model/menu.dart';
+import '../model/product.dart';
 import '../model/ticket.dart';
 
 class ApiService {
@@ -35,6 +36,28 @@ class ApiService {
       }
     } catch (e) {
       throw Exception('Erro de conexão: Verifique se a API está rodando em $kBaseUrl. (${e.toString()})');
+    }
+  }
+
+  static Future<List<Product>> fetchProductsByCategory(String categoryId) async {
+    // Se a categoria não tiver um ID, retorna uma lista vazia para evitar erros.
+    if (categoryId.isEmpty) return [];
+
+    final String endpoint = '$kProductsEndpoint/$categoryId/flutter-products';
+
+    try {
+      final response = await http.get(Uri.parse(endpoint));
+      if (response.statusCode == 200) {
+        final List<dynamic> productsJson = json.decode(utf8.decode(response.bodyBytes));
+        // Assumindo que seu modelo Product tem um factory constructor 'fromJson'
+        return productsJson
+            .map((json) => Product.fromJson(json as Map<String, dynamic>))
+            .toList();
+      } else {
+        throw Exception('Falha ao carregar produtos. Status: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erro de conexão ao buscar produtos: $e');
     }
   }
 

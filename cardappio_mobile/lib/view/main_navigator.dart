@@ -9,7 +9,6 @@ import 'package:cardappio_mobile/view/screens/payment/payment_screen.dart';
 import 'package:cardappio_mobile/view/screens/ticket/ticket_screen.dart';
 import 'package:flutter/material.dart';
 
-// REMOVIDO: import '../data/mock_data.dart';
 import '../data/api_service.dart';
 import '../model/cart_item.dart';
 import '../model/menu.dart';
@@ -26,8 +25,6 @@ class MainNavigator extends StatefulWidget {
 
 class _MainNavigatorState extends State<MainNavigator> with _CartManager, _NavigationManager, _CategoryManager {
   Menu? _activeMenu;
-
-  // NOVO: Estados para gerenciar as categorias vindas da API
   List<Category> _categories = [];
   bool _isLoadingCategories = false;
 
@@ -35,15 +32,14 @@ class _MainNavigatorState extends State<MainNavigator> with _CartManager, _Navig
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex;
-    _selectedCategoryName = ''; // ALTERADO: Inicia vazio, será preenchido após a API
+    _selectedCategoryName = '';
     _initializeScreens();
   }
 
-  // NOVO: Método para buscar as categorias da API
   Future<void> _loadCategories(String menuId) async {
     setState(() {
       _isLoadingCategories = true;
-      _categories = []; // Limpa categorias antigas antes de buscar novas
+      _categories = [];
     });
 
     try {
@@ -51,7 +47,6 @@ class _MainNavigatorState extends State<MainNavigator> with _CartManager, _Navig
       if (mounted) {
         setState(() {
           _categories = fetchedCategories;
-          // Define a primeira categoria da lista como a selecionada por padrão
           if (_categories.isNotEmpty) {
             _selectedCategoryName = _categories.first.name;
           }
@@ -83,7 +78,6 @@ class _MainNavigatorState extends State<MainNavigator> with _CartManager, _Navig
   }
 
   Widget _buildCurrentMenuScreen() {
-    // ALTERADO: Mostra um indicador de progresso enquanto as categorias carregam
     if (_isLoadingCategories) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -100,9 +94,25 @@ class _MainNavigatorState extends State<MainNavigator> with _CartManager, _Navig
         ),
       );
     }
+
+    // ALTERAÇÃO PRINCIPAL AQUI
+    // Precisamos encontrar o ID da categoria que está atualmente selecionada pelo nome.
+    String selectedCategoryId = '';
+    if (_categories.isNotEmpty && _selectedCategoryName.isNotEmpty) {
+      // Procura na lista de categorias (_categories) pela primeira que tenha o nome
+      // igual ao nome selecionado (_selectedCategoryName).
+      final selectedCategory = _categories.firstWhere(
+            (category) => category.name == _selectedCategoryName,
+        // Se, por algum motivo, não encontrar, retorna uma categoria vazia para evitar erros.
+        orElse: () => Category(id: '', name: ''),
+      );
+      selectedCategoryId = selectedCategory.id;
+    }
+
     return MenuDetailScreen(
       menu: _activeMenu!,
       selectedCategoryName: _selectedCategoryName,
+      selectedCategoryId: selectedCategoryId, // NOVO: Passando o ID encontrado
       onProductTap: _navigateToProductDetail,
     );
   }
@@ -116,14 +126,12 @@ class _MainNavigatorState extends State<MainNavigator> with _CartManager, _Navig
     );
   }
 
-  // ALTERADO: Agora dispara a busca de categorias
   void _handleQuickOrder(Menu menu) {
     setState(() {
       _activeMenu = menu;
       _selectedIndex = 0;
       _updateScreens();
     });
-    // Dispara a busca pelas categorias assim que um menu é selecionado
     _loadCategories(menu.id);
   }
 
@@ -162,6 +170,7 @@ class _MainNavigatorState extends State<MainNavigator> with _CartManager, _Navig
 
     return Scaffold(
       appBar: AppBar(
+        // ... (seu AppBar continua igual)
         automaticallyImplyLeading: false,
         title: const Text('Cardappio', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 20)),
         elevation: 4,
@@ -173,6 +182,7 @@ class _MainNavigatorState extends State<MainNavigator> with _CartManager, _Navig
       body: Row(
         children: [
           PermanentSidebar(
+            // ... (seu PermanentSidebar continua igual)
             selectedIndex: _selectedIndex,
             cartItemCount: _cartItemCount,
             onTap: (index) {
@@ -186,10 +196,7 @@ class _MainNavigatorState extends State<MainNavigator> with _CartManager, _Navig
               }
             },
             isMenuSelected: _selectedIndex == 0,
-
-            // NOVO: Passando a lista de categorias para o Sidebar
             categories: _categories,
-
             selectedCategoryName: _selectedCategoryName,
             onCategoryTap: (categoryName) {
               setState(() {
@@ -206,7 +213,7 @@ class _MainNavigatorState extends State<MainNavigator> with _CartManager, _Navig
   }
 
   Widget _buildCartIcon(BuildContext context) {
-    // ... (código do _buildCartIcon não precisa de alteração)
+    // ... (seu _buildCartIcon continua igual)
     return Stack(
       children: [
         IconButton(
@@ -249,9 +256,8 @@ class _MainNavigatorState extends State<MainNavigator> with _CartManager, _Navig
 }
 
 // ----------------------------------------------------------------------------
-// MIXINS
+// MIXINS (sem alterações)
 // ----------------------------------------------------------------------------
-
 mixin _NavigationManager on State<MainNavigator> {
   late int _selectedIndex;
   late List<Widget> _screens;
@@ -264,7 +270,6 @@ mixin _NavigationManager on State<MainNavigator> {
 }
 
 mixin _CartManager on State<MainNavigator> {
-  // ... (código do _CartManager não precisa de alteração)
   List<CartItem> _cartItems = [];
   double get _cartTotal => _cartItems.fold(0.0, (sum, item) => sum + item.subtotal);
   int get _cartItemCount => _cartItems.fold(0, (sum, item) => sum + item.quantity);
@@ -288,9 +293,8 @@ mixin _CartManager on State<MainNavigator> {
   }
 
   void _removeItemFromCart(String productId) {
-    setState(() {
-      _cartItems.removeWhere((item) => item.product.id == productId);
-    });
+    _cartItems.removeWhere((item) => item.product.id == productId);
+    setState(() {});
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Item removido do carrinho.')),
@@ -299,9 +303,6 @@ mixin _CartManager on State<MainNavigator> {
   }
 }
 
-// ALTERADO: Mixin de Categoria agora é mais simples
 mixin _CategoryManager on State<MainNavigator> {
   late String _selectedCategoryName;
-// A função _getCategoryIcon foi movida para o widget 'SidebarCategoryMenu'
-// pois é uma responsabilidade de UI e não de lógica de estado do navigator.
 }
