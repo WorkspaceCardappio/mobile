@@ -32,7 +32,6 @@ final List<MenuItem> houseRecommendations = [
       price: 'R\$ 47,99'),
 ];
 
-
 class HomeScreen extends StatelessWidget {
   final Function(Menu menu) onQuickOrder;
 
@@ -143,132 +142,146 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildRecommendationCard(BuildContext context, MenuItem item, Function onTap) {
+  Widget _buildRecommendationCard(BuildContext context, MenuItem item, Function onTap, double itemWidth) {
+    const double cardSpacing = 20.0; 
 
-  return Padding(
-    padding: const EdgeInsets.only(right: 16.0), 
-    child: Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-         
-          Expanded(
-            child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-              child: Image.asset(
-                item.imageUrl, 
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  color: Colors.grey.shade400,
-                  alignment: Alignment.center,
+    return Padding(
+      padding: const EdgeInsets.only(right: cardSpacing), 
+      child: Container(
+        width: itemWidth, 
+        decoration: BoxDecoration(
+          color: Colors.white, 
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 5,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            
+            Expanded(
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                child: Image.asset(
+                  item.imageUrl, 
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    color: Colors.grey.shade400,
+                    alignment: Alignment.center,
+                  ),
                 ),
               ),
             ),
-          ),
-          
-          Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(bottom: Radius.circular(12)),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded( 
-                  child: Text(
-                    item.name,
+            
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded( 
+                    child: Text(
+                      item.name,
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                      ), 
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Text( 
+                    item.price,
                     style: const TextStyle(
-                      color: Colors.black,
+                      color: Color(0xFF51CF66), 
+                      fontWeight: FontWeight.bold,
                       fontSize: 18,
-                      fontWeight: FontWeight.w500,
-                    ), 
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  
+@override
+  Widget build(BuildContext context) { 
+    const double horizontalPadding = 50.0; 
+    const double itemSpacing = 20.0;    
+    const int itemsInView = 3;         
+    
+    return Column(
+      children: [
+        const SizedBox(height: 10),
+        SizedBox(
+          height: MediaQuery.of(context).size.height * 0.55, 
+          child: _buildPromotionalSection(context, promoItem),
+        ),
+        const SizedBox(height: 5),
+    
+        Expanded(
+          child: Container(
+            color: const Color(0xFF7c7973),
+            width: double.infinity,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(left: horizontalPadding, top: 5.0, bottom: 12),
+                  child: const Text(
+                    'Recomendações da casa',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 25,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-                Text( 
-                  item.price,
-                  style: const TextStyle(
-                    color: Color(0xFF51CF66), 
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
+            
+                SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.31,
+                  width: MediaQuery.of(context).size.width,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final availableWidth = constraints.maxWidth - (horizontalPadding * 2); 
+                      
+                      final totalSpacing = itemSpacing * (itemsInView - 1); 
+                      
+                      final itemWidth = (availableWidth - totalSpacing) / itemsInView;
+                      
+                      return ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: horizontalPadding),
+                        scrollDirection: Axis.horizontal,
+                        itemCount: houseRecommendations.length,
+                        itemBuilder: (context, index) {
+                          final item = houseRecommendations[index];
+                          
+                          return _buildRecommendationCard(
+                            context, 
+                            item, 
+                            () => print('Item ${item.name} clicado'),
+                            itemWidth 
+                          );
+                        },
+                      );
+                    }
                   ),
                 ),
               ],
             ),
           ),
-        ],
-      ),
-    ),
-  );
-}
-
-  
-  @override
-  Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final cardWidth = (screenWidth - 250) / 3;
-
-    return Column(
-      children: [
-
-        SizedBox(height: 10),
-        SizedBox(
-          height: MediaQuery.of(context).size.height * 0.55, 
-          child: _buildPromotionalSection(context, promoItem),
-        ),
-        SizedBox(height: 5),
-    
-    Expanded(
-        child: Container(
-        color: Color(0xFF7c7973),
-        width: double.infinity,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(left: 22.0, top: 5.0, bottom: 1),
-              child: const Text(
-                'Recomendações da casa',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-        
-        SizedBox(
-          height: MediaQuery.of(context).size.height * 0.3,
-          width: screenWidth,
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            scrollDirection: Axis.horizontal,
-            itemCount: houseRecommendations.length,
-            itemBuilder: (context, index) {
-              final item = houseRecommendations[index];
-              return SizedBox(
-                width: cardWidth,
-                child: _buildRecommendationCard(
-                  context, 
-                  item, 
-                  () => print('Item ${item.name} clicado')
-                ),
-              );
-            },
-          ),
         ),
       ],
-        ),
-        ),
-    ),
-       ],
     );
   }
 }
-
