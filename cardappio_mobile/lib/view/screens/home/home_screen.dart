@@ -32,10 +32,40 @@ final List<MenuItem> houseRecommendations = [
       price: 'R\$ 47,99'),
 ];
 
-class HomeScreen extends StatelessWidget {
+List<String> promoImages = [
+  'lib/images/prato.jpeg',
+  'lib/images/camarao.jpeg',
+  'lib/images/macarrao.jpeg',
+  'lib/images/pf.jpeg', 
+];
+
+class HomeScreen extends StatefulWidget {
   final Function(Menu menu) onQuickOrder;
 
   const HomeScreen({super.key, required this.onQuickOrder});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  late PageController _pageController;
+  int _activePage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(
+      viewportFraction: 0.8, 
+      initialPage: 1,
+    );
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
 
   void _handleQuickOrder(BuildContext context) async {
     final overlay = OverlayEntry(
@@ -54,7 +84,7 @@ class HomeScreen extends StatelessWidget {
           : null;
 
       if (activeMenu != null) {
-        onQuickOrder(activeMenu);
+        widget.onQuickOrder(activeMenu);
       } else {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -79,33 +109,36 @@ class HomeScreen extends StatelessWidget {
     }
   }
 
-  Widget _buildPromotionalSection(BuildContext context, MenuItem item) {
-    return Center(
-      child: SizedBox(
-        width: MediaQuery.of(context).size.width * 0.5,
-        height: 380,
-        child: Stack(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.asset(
-                item.imageUrl, 
-                width: 800,
-                height: 400,
-                fit: BoxFit.cover,
+  Widget _buildPromotionalCarouselItem(BuildContext context, String imagePath, int index) {
+
+    final item = promoItem;
+    bool active = index == _activePage;
+    double marginVertical = active ? 10 : 20;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeInOutCubic,
+      margin: EdgeInsets.symmetric(horizontal: 5.0, vertical: marginVertical), 
+      child: Stack(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.asset(
+              imagePath, 
+              width: double.infinity,
+              height: double.infinity,
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+              errorBuilder: (context, error, stackTrace) => Container(
+                color: const Color.fromARGB(255, 182, 13, 13),
                 alignment: Alignment.center,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  width: 800,
-                  height: 400,
-                  color: const Color.fromARGB(255, 182, 13, 13),
-                  alignment: Alignment.center,
-                  child: Text(
-                    'Erro ao carregar imagem: ${item.name}',
-                    style: const TextStyle(color: Colors.white, fontSize: 18),
-                  ),
+                child: const Text(
+                  'Erro de Imagem',
+                  style: TextStyle(color: Colors.white, fontSize: 18),
                 ),
               ),
             ),
+          ),
 
             Positioned(
               top: 16,
@@ -116,6 +149,9 @@ class HomeScreen extends StatelessWidget {
                   color: Colors.white,
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
+                  shadows: [
+                  Shadow(offset: Offset(1, 1), blurRadius: 3.0, color: Colors.black54)
+                ]
                 ),
               ),
             ),
@@ -133,13 +169,25 @@ class HomeScreen extends StatelessWidget {
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 10),
                 ),
-                child: const Text('Adicionar'),
+                child: const Text('Adicionar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ),
             ),
           ],
         ),
-      ),
-    );
+      );
+  }
+
+  List<Widget> _buildPageIndicators() {
+    return List<Widget>.generate(promoImages.length, (index) {
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4.0),
+        width: _activePage == index ? 10.0 : 8.0,
+        height: _activePage == index ? 10.0 : 8.0,
+        decoration: BoxDecoration(
+            color: _activePage == index ? Colors.black : Colors.black.withOpacity(0.6),
+            shape: BoxShape.circle),
+      );
+    });
   }
 
   Widget _buildRecommendationCard(BuildContext context, MenuItem item, Function onTap, double itemWidth) {
@@ -219,16 +267,48 @@ class HomeScreen extends StatelessWidget {
     const double horizontalPadding = 50.0; 
     const double itemSpacing = 20.0;    
     const int itemsInView = 3;         
+    final double carouselWidth = MediaQuery.of(context).size.width * 0.5;
     
     return Column(
       children: [
         const SizedBox(height: 10),
-        SizedBox(
-          height: MediaQuery.of(context).size.height * 0.55, 
-          child: _buildPromotionalSection(context, promoItem),
-        ),
-        const SizedBox(height: 5),
-    
+
+        //carrossel
+         SizedBox(
+            height: MediaQuery.of(context).size.height * 0.55, 
+            width: carouselWidth,
+          child: Column(
+            children: [
+              Expanded(
+                    child: PageView.builder(
+                      controller: _pageController,
+                      itemCount: promoImages.length,
+                     
+                      onPageChanged: (int page) {
+                        setState(() {
+                          _activePage = page;
+                        });
+                      },
+                      itemBuilder: (context, index) {
+                        return _buildPromotionalCarouselItem(context, promoImages[index], index);
+                      },
+                  ),
+                  ),
+
+               Padding(
+                 padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: _buildPageIndicators(),
+                  ),
+               ),
+              ],
+            ),
+         ),
+              
+              const SizedBox(height: 10),
+
+        //recomendações da casa     
         Expanded(
           child: Container(
             color: const Color(0xFF7c7973),
