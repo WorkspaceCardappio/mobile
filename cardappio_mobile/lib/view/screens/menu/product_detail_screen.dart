@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-
-// Mantemos mock_data para os ADICIONAIS, que ainda não foram migrados.
 import '../../../data/api_service.dart';
-import '../../../data/mock_data.dart';
 import '../../../model/product.dart';
+
+// O import de mock_data não é mais necessário aqui.
 
 class ProductDetailScreen extends StatefulWidget {
   final Product product;
@@ -16,10 +15,11 @@ class ProductDetailScreen extends StatefulWidget {
 
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
   // --- Estados para gerenciar a busca de dados da API ---
-  late Future<List<ProductVariable>> _variablesFuture;
+  late Future<void> _detailsFuture; // Um único Future para carregar tudo (variáveis e adicionais)
   List<ProductVariable> _productVariables = [];
+  List<ProductAddOn> _productAddOns = []; // Novo estado para os adicionais da API
 
-  // --- Estados existentes da UI ---
+  // --- Estados da UI ---
   int _quantity = 1;
   double _currentPrice = 0.0;
   String? _selectedVariableValue;
@@ -27,41 +27,53 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   final TextEditingController _observationsController = TextEditingController();
   int _currentStep = 0;
 
-  // A validação do passo 1 agora depende da lista de variáveis carregada da API
   bool get _isStep1Complete => _productVariables.isEmpty || _selectedVariableValue != null;
 
   @override
   void initState() {
     super.initState();
     _currentPrice = widget.product.price;
-
-    // Dispara a busca pelas variáveis assim que a tela é iniciada
-    _variablesFuture = _fetchVariables();
-
-    // A lógica dos adicionais continua usando mock data por enquanto
-    for (var addon in mockAddOns) {
-      _selectedAddOnQuantities[addon.id] = 0;
-    }
-
-    _updateTotal(); // Calcula o preço inicial (ainda sem o ajuste da variável)
+    // Dispara a busca de TODOS os detalhes do produto (variáveis e adicionais)
+    _detailsFuture = _fetchProductDetails();
   }
 
-  // Função que chama o ApiService e atualiza o estado local
-  Future<List<ProductVariable>> _fetchVariables() async {
+  // Função que chama AMBAS as APIs em paralelo usando Future.wait
+  Future<void> _fetchProductDetails() async {
     try {
-      final variables = await ApiService.fetchProductVariables(widget.product.id);
+      // Future.wait executa as chamadas de API ao mesmo tempo. O código só continua
+      // quando AMBAS terminarem. Isso é mais eficiente que chamá-las em sequência.
+      //
+      final results = await Future.wait([
+        ApiService.fetchProductVariables(widget.product.id),
+        ApiService.fetchProductAddOns(widget.product.id),
+      ]);
 
-      // Após carregar, guarda as variáveis e pré-seleciona a primeira opção
-      if (mounted && variables.isNotEmpty && variables.first.options.isNotEmpty) {
+      // Processa os resultados após ambos terminarem
+      final variables = results[0] as List<ProductVariable>;
+      final addOns = results[1] as List<ProductAddOn>;
+
+      if (mounted) {
         setState(() {
+          // Guarda os resultados nos estados
           _productVariables = variables;
-          _selectedVariableValue = variables.first.options.first.id;
-          _updateTotal(); // Recalcula o preço total com a opção padrão
+          _productAddOns = addOns;
+
+          // Inicializa o mapa de quantidades de adicionais com os dados da API
+          for (var addon in _productAddOns) {
+            _selectedAddOnQuantities[addon.id] = 0;
+          }
+
+          // Pré-seleciona a primeira variável, se houver
+          if (_productVariables.isNotEmpty && _productVariables.first.options.isNotEmpty) {
+            _selectedVariableValue = _productVariables.first.options.first.id;
+          }
+
+          // Recalcula o preço total com os dados carregados
+          _updateTotal();
         });
       }
-      return variables;
     } catch (e) {
-      // Se ocorrer um erro, ele será capturado e exibido pelo FutureBuilder
+      // Propaga o erro para o FutureBuilder exibi-lo na tela
       rethrow;
     }
   }
@@ -72,10 +84,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     super.dispose();
   }
 
-  // A lógica de cálculo agora usa a lista de variáveis do estado (_productVariables)
   void _updateTotal() {
     double basePrice = widget.product.price;
 
+    // Lógica das variáveis (usa _productVariables)
     if (_selectedVariableValue != null && _productVariables.isNotEmpty) {
       final selectedOption = _productVariables
           .expand((v) => v.options)
@@ -86,8 +98,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       basePrice += selectedOption.priceAdjustment;
     }
 
-    // A lógica dos adicionais permanece a mesma
-    for (var addon in mockAddOns) {
+    // Lógica dos adicionais agora usa a lista _productAddOns vinda da API
+    for (var addon in _productAddOns) {
       final quantity = _selectedAddOnQuantities[addon.id] ?? 0;
       basePrice += addon.price * quantity;
     }
@@ -97,46 +109,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     });
   }
 
-  // O conteúdo do Passo 1 agora é construído com os dados da API
-  Widget _buildStep1Content() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(widget.product.name, style: Theme.of(context).textTheme.headlineMedium),
-        const SizedBox(height: 8),
-        Text(widget.product.description, style: TextStyle(color: Colors.grey[700], fontSize: 16)),
-
-        // Se houver variáveis carregadas, exibe as opções
-        if (_productVariables.isNotEmpty) ...[
-          const Divider(height: 30),
-          // Usa o nome da variável vindo da API (ex: "Ponto da Carne")
-          Text('1. ${_productVariables.first.name} (Obrigatório)',
-              style: Theme.of(context).textTheme.titleLarge!.copyWith(fontSize: 20)),
-          const SizedBox(height: 10),
-          // Mapeia as opções da variável para criar os RadioListTile
-          ..._productVariables.first.options.map((option) {
-            return RadioListTile<String>(
-              title: Text(
-                  '${option.name} (${option.priceAdjustment >= 0 ? '+' : ''} R\$ ${option.priceAdjustment.toStringAsFixed(2)})'),
-              value: option.id,
-              groupValue: _selectedVariableValue,
-              onChanged: (String? value) {
-                setState(() {
-                  _selectedVariableValue = value;
-                  _updateTotal();
-                });
-              },
-              activeColor: Theme.of(context).colorScheme.primary,
-              controlAffinity: ListTileControlAffinity.leading,
-              contentPadding: EdgeInsets.zero,
-            );
-          }).toList(),
-        ]
-      ],
-    );
-  }
-
-  // O método build agora usa um FutureBuilder para lidar com o carregamento dos dados
+  // O método build agora usa um FutureBuilder único para carregar todos os detalhes
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -144,8 +117,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         title: Text(widget.product.name),
         elevation: 1,
       ),
-      body: FutureBuilder<List<ProductVariable>>(
-        future: _variablesFuture,
+      body: FutureBuilder<void>(
+        future: _detailsFuture,
         builder: (context, snapshot) {
           // 1. Enquanto os dados estão carregando, exibe um spinner
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -158,7 +131,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Text(
-                  'Não foi possível carregar as opções do produto.\n${snapshot.error}',
+                  'Não foi possível carregar os detalhes do produto.\n${snapshot.error}',
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -209,18 +182,52 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  // --- MÉTODOS ABAIXO NÃO PRECISAM DE ALTERAÇÃO ---
-  // Eles lidam com a lógica do Stepper e com os adicionais (que ainda são mockados).
+  // --- MÉTODOS DE CONSTRUÇÃO DOS PASSOS (STEPS) ---
+
+  Widget _buildStep1Content() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(widget.product.name, style: Theme.of(context).textTheme.headlineMedium),
+        const SizedBox(height: 8),
+        Text(widget.product.description, style: TextStyle(color: Colors.grey[700], fontSize: 16)),
+
+        if (_productVariables.isNotEmpty) ...[
+          const Divider(height: 30),
+          Text('1. ${_productVariables.first.name} (Obrigatório)',
+              style: Theme.of(context).textTheme.titleLarge!.copyWith(fontSize: 20)),
+          const SizedBox(height: 10),
+          ..._productVariables.first.options.map((option) {
+            return RadioListTile<String>(
+              title: Text(
+                  '${option.name} (${option.priceAdjustment >= 0 ? '+' : ''} R\$ ${option.priceAdjustment.toStringAsFixed(2)})'),
+              value: option.id,
+              groupValue: _selectedVariableValue,
+              onChanged: (String? value) {
+                setState(() {
+                  _selectedVariableValue = value;
+                  _updateTotal();
+                });
+              },
+              activeColor: Theme.of(context).colorScheme.primary,
+              controlAffinity: ListTileControlAffinity.leading,
+              contentPadding: EdgeInsets.zero,
+            );
+          }).toList(),
+        ]
+      ],
+    );
+  }
 
   Widget _buildStep2Content() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (mockAddOns.isNotEmpty) ...[
+        if (_productAddOns.isNotEmpty) ...[
           Text('2. Adicionais (Opcional)',
               style: Theme.of(context).textTheme.titleLarge!.copyWith(fontSize: 20)),
           const SizedBox(height: 10),
-          ...mockAddOns.map((addon) {
+          ..._productAddOns.map((addon) {
             final quantity = _selectedAddOnQuantities[addon.id] ?? 0;
             return ListTile(
               contentPadding: EdgeInsets.zero,
@@ -310,6 +317,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       ],
     );
   }
+
+  // --- MÉTODOS DE CONTROLE DO STEPPER ---
 
   List<Step> _buildSteps() {
     return [

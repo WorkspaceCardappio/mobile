@@ -77,6 +77,24 @@ class ApiService {
     }
   }
 
+  static Future<List<ProductAddOn>> fetchProductAddOns(String productId) async {
+    final String endpoint = '$kAdditionalsEndpoint/$productId/flutter-additionals';
+
+    try {
+      final response = await http.get(Uri.parse(endpoint));
+      if (response.statusCode == 200) {
+        final List<dynamic> addOnsJson = json.decode(utf8.decode(response.bodyBytes));
+        return addOnsJson
+            .map((json) => ProductAddOn.fromJson(json as Map<String, dynamic>))
+            .toList();
+      } else {
+        throw Exception('Falha ao carregar adicionais do produto.');
+      }
+    } catch (e) {
+      throw Exception('Erro de conexão ao buscar adicionais: $e');
+    }
+  }
+
   static Future<TicketDetail> fetchTicketDetails(String ticketId) async {
     await Future.delayed(kApiMockDelay);
 

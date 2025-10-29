@@ -30,13 +30,26 @@ class Product {
   }
 }
 
+// ... (outras classes: Product, ProductCategory, etc.)
+
 class ProductAddOn {
   final String id;
   final String name;
   final double price;
 
   ProductAddOn({required this.id, required this.name, required this.price});
+
+  // NOVO: Adicione este factory constructor para ler o JSON da API
+  factory ProductAddOn.fromJson(Map<String, dynamic> json) {
+    return ProductAddOn(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      price: (json['price'] as num).toDouble(),
+    );
+  }
 }
+
+// ... (outras classes: ProductOption, ProductVariable)
 
 // =========================================================================
 // CORREÇÃO PRINCIPAL AQUI
