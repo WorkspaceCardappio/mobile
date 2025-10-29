@@ -8,3 +8,5 @@ const String kCategoriesEndpoint = '$kBaseUrl/api/categories'; // <-- ADICIONE E
 const String kProductsEndpoint = '$kBaseUrl/api/products'; // <-- ADICIONE ESTA LINHA
 
 const Duration kApiMockDelay = Duration(milliseconds: 700);
+
+const String kProductVariablesEndpoint = '$kBaseUrl/api/product-variables';

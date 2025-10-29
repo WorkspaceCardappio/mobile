@@ -102,4 +102,46 @@ class ApiService {
     await Future.delayed(const Duration(seconds: 1));
     return DateTime.now().millisecondsSinceEpoch % 10 < 9;
   }
-}
+
+  static Future<List<ProductVariable>> fetchProductVariables(String productId) async {
+    // Monta a URL final usando as constantes e o ID do produto
+    final String endpoint = '$kProductVariablesEndpoint/$productId/flutter-product-variables';
+
+    try {
+      final response = await http.get(Uri.parse(endpoint));
+
+      // Verifica se a requisição foi bem-sucedida
+      if (response.statusCode == 200) {
+        // Decodifica a resposta JSON (que é uma lista de objetos)
+        final List<dynamic> optionsJson = json.decode(utf8.decode(response.bodyBytes));
+
+        // Se a API não retornar nenhuma opção, retorna uma lista vazia.
+        if (optionsJson.isEmpty) {
+          return [];
+        }
+
+        // Converte cada objeto JSON da lista em um objeto ProductOption
+        List<ProductOption> options = optionsJson
+            .map((json) => ProductOption.fromJson(json as Map<String, dynamic>))
+            .toList();
+
+        // Cria um único "ProductVariable" genérico para conter todas as opções recebidas.
+        // Isso adapta o retorno da API para o que a UI do Flutter espera.
+        final productVariable = ProductVariable(
+          id: 'default-variable-id', // ID genérico, pois não vem da API
+          name: 'Opções', // Nome genérico para o grupo de opções
+          options: options,
+        );
+
+        // Retorna o ProductVariable dentro de uma lista, como a função exige.
+        return [productVariable];
+
+      } else {
+        // Se o servidor respondeu com um erro, lança uma exceção
+        throw Exception('Falha ao carregar as opções do produto. Status: ${response.statusCode}');
+      }
+    } catch (e) {
+      // Se ocorreu um erro de conexão ou outro problema, lança uma exceção
+      throw Exception('Erro de conexão ao buscar as opções: $e');
+    }
+  }}

@@ -1,6 +1,3 @@
-// Esta classe provavelmente veio dos seus dados mockados e pode não ser mais
-// usada diretamente, já que agora temos a classe 'Category' (com id e name)
-// vinda da API. Por enquanto, pode mantê-la.
 class ProductCategory {
   final String name;
   final String icon;
@@ -13,33 +10,26 @@ class Product {
   final String name;
   final String description;
   final double price;
-  final String? categoryName; // ALTERADO: Tornou-se opcional (pode ser nulo)
+  final String? categoryName;
 
   Product({
     required this.id,
     required this.name,
     required this.description,
     required this.price,
-    this.categoryName, // ALTERADO: Não é mais 'required'
+    this.categoryName,
   });
 
-  // NOVO: Factory constructor para criar um Product a partir de um JSON
   factory Product.fromJson(Map<String, dynamic> json) {
     return Product(
       id: json['id'] as String,
       name: json['name'] as String,
-      // Garante que a descrição não seja nula, usando '' como padrão se não vier da API
       description: json['description'] as String? ?? '',
-      // Converte o preço (que pode vir como int ou double) para double
       price: (json['price'] as num).toDouble(),
-      // O categoryName não é preenchido aqui pois não vem nesta requisição da API
     );
   }
 }
 
-// As classes abaixo não precisam de alteração POR ENQUANTO.
-// Elas provavelmente precisarão de um constructor 'fromJson' no futuro,
-// quando você for buscar os detalhes de um único produto.
 class ProductAddOn {
   final String id;
   final String name;
@@ -48,12 +38,31 @@ class ProductAddOn {
   ProductAddOn({required this.id, required this.name, required this.price});
 }
 
+// =========================================================================
+// CORREÇÃO PRINCIPAL AQUI
+// =========================================================================
+
 class ProductOption {
   final String id;
   final String name;
   final double priceAdjustment;
 
-  ProductOption({required this.id, required this.name, required this.priceAdjustment});
+  ProductOption({
+    required this.id,
+    required this.name,
+    required this.priceAdjustment
+  });
+
+  // NOVO: Adicione este factory constructor para corrigir o erro.
+  factory ProductOption.fromJson(Map<String, dynamic> json) {
+    // Note que estamos mapeando o campo 'price' que vem da API
+    // para o nosso campo 'priceAdjustment' no modelo do Flutter.
+    return ProductOption(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      priceAdjustment: (json['price'] as num? ?? 0.0).toDouble(),
+    );
+  }
 }
 
 class ProductVariable {
@@ -62,4 +71,21 @@ class ProductVariable {
   final List<ProductOption> options;
 
   ProductVariable({required this.id, required this.name, required this.options});
+
+  // NOVO: É uma boa prática adicionar o fromJson aqui também.
+  factory ProductVariable.fromJson(Map<String, dynamic> json) {
+    // Pega a lista de 'options' do JSON
+    var optionsListFromJson = json['options'] as List<dynamic>? ?? [];
+
+    // Converte a lista de JSON em uma lista de objetos ProductOption
+    List<ProductOption> parsedOptions = optionsListFromJson
+        .map((optionJson) => ProductOption.fromJson(optionJson as Map<String, dynamic>))
+        .toList();
+
+    return ProductVariable(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      options: parsedOptions,
+    );
+  }
 }
