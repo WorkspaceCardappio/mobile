@@ -1,7 +1,10 @@
   import 'package:cardappio_mobile/view/common/sidebar_category_menu.dart';
   import 'package:flutter/material.dart';
 
+import '../../model/category.dart';
+
   class PermanentSidebar extends StatelessWidget {
+    final List<Category> categories;
     final int selectedIndex;
     final int cartItemCount;
     final Function(int index) onTap;
@@ -20,6 +23,7 @@
       required this.isMenuSelected,
       required this.selectedCategoryName,
       required this.onCategoryTap,
+      required this.categories,
     });
 
     @override
@@ -67,11 +71,12 @@
                         _buildSidebarItem(context, 0, Icons.menu_book, 'Cardápio', selectedIndex, onTap),
 
                         // 1.2. SUB-MENU DE CATEGORIAS
-                        SidebarCategoryMenu(
-                          isExpanded: isMenuSelected,
-                          selectedCategoryName: selectedCategoryName,
-                          onCategoryTap: onCategoryTap,
-                        ),
+              SidebarCategoryMenu(
+                isExpanded: isMenuSelected,
+                selectedCategoryName: selectedCategoryName,
+                onCategoryTap: onCategoryTap,
+                categories: categories, // <-- AQUI é a nova propriedade obrigatória
+              ),
                       ],
                     ),
 

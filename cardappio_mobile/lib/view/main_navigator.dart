@@ -1,3 +1,6 @@
+// NOVOS IMPORTS
+import 'package:cardappio_mobile/model/category.dart';
+
 import 'package:cardappio_mobile/view/screens/cart/cart_screen.dart';
 import 'package:cardappio_mobile/view/screens/home/home_screen.dart';
 import 'package:cardappio_mobile/view/screens/menu/menu_detail_screen.dart';
@@ -6,12 +9,12 @@ import 'package:cardappio_mobile/view/screens/payment/payment_screen.dart';
 import 'package:cardappio_mobile/view/screens/ticket/ticket_screen.dart';
 import 'package:flutter/material.dart';
 
-import '../data/mock_data.dart';
+// REMOVIDO: import '../data/mock_data.dart';
+import '../data/api_service.dart';
 import '../model/cart_item.dart';
 import '../model/menu.dart';
 import '../model/product.dart';
 import 'common/permanent_sidebar.dart';
-import 'common/sidebar_category_menu.dart'; // NOVO IMPORT
 
 class MainNavigator extends StatefulWidget {
   final int initialIndex;
@@ -22,15 +25,51 @@ class MainNavigator extends StatefulWidget {
 }
 
 class _MainNavigatorState extends State<MainNavigator> with _CartManager, _NavigationManager, _CategoryManager {
-  Menu? _activeMenu; // Definido aqui
+  Menu? _activeMenu;
+
+  // NOVO: Estados para gerenciar as categorias vindas da API
+  List<Category> _categories = [];
+  bool _isLoadingCategories = false;
 
   @override
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex;
-    // Inicializa a categoria com a primeira ao iniciar o navegador
-    _selectedCategoryName = mockCategories.first.name;
+    _selectedCategoryName = ''; // ALTERADO: Inicia vazio, será preenchido após a API
     _initializeScreens();
+  }
+
+  // NOVO: Método para buscar as categorias da API
+  Future<void> _loadCategories(String menuId) async {
+    setState(() {
+      _isLoadingCategories = true;
+      _categories = []; // Limpa categorias antigas antes de buscar novas
+    });
+
+    try {
+      final fetchedCategories = await ApiService.fetchCategories(menuId);
+      if (mounted) {
+        setState(() {
+          _categories = fetchedCategories;
+          // Define a primeira categoria da lista como a selecionada por padrão
+          if (_categories.isNotEmpty) {
+            _selectedCategoryName = _categories.first.name;
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao carregar categorias: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingCategories = false;
+        });
+      }
+    }
   }
 
   void _initializeScreens() {
@@ -44,47 +83,52 @@ class _MainNavigatorState extends State<MainNavigator> with _CartManager, _Navig
   }
 
   Widget _buildCurrentMenuScreen() {
+    // ALTERADO: Mostra um indicador de progresso enquanto as categorias carregam
+    if (_isLoadingCategories) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     if (_activeMenu == null) {
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(),
+            Icon(Icons.menu_book, size: 60, color: Colors.grey),
             SizedBox(height: 16),
-            Text('Aguardando Cardápio Ativo...', style: TextStyle(fontSize: 18)),
+            Text('Selecione um cardápio na tela Home para começar.', style: TextStyle(fontSize: 18)),
           ],
         ),
       );
     }
     return MenuDetailScreen(
       menu: _activeMenu!,
-      selectedCategoryName: _selectedCategoryName, // Propriedade do _CategoryManager
+      selectedCategoryName: _selectedCategoryName,
       onProductTap: _navigateToProductDetail,
     );
   }
 
   Widget _buildCartScreen() {
     return CartScreen(
-      cartItems: _cartItems, // Propriedade do _CartManager
-      cartTotal: _cartTotal, // Propriedade do _CartManager
-      onRemoveItem: _removeItemFromCart, // Método do _CartManager
+      cartItems: _cartItems,
+      cartTotal: _cartTotal,
+      onRemoveItem: _removeItemFromCart,
       onConfirmOrder: _handleOrderConfirmation,
     );
   }
 
+  // ALTERADO: Agora dispara a busca de categorias
   void _handleQuickOrder(Menu menu) {
     setState(() {
       _activeMenu = menu;
-      // Define a primeira categoria ao carregar um novo menu
-      _selectedCategoryName = mockCategories.first.name;
       _selectedIndex = 0;
       _updateScreens();
     });
+    // Dispara a busca pelas categorias assim que um menu é selecionado
+    _loadCategories(menu.id);
   }
 
   void _handleOrderConfirmation() {
     setState(() {
-      // Simulação de envio de pedido
       _cartItems = [];
       _updateScreens();
     });
@@ -107,7 +151,6 @@ class _MainNavigatorState extends State<MainNavigator> with _CartManager, _Navig
     }
   }
 
-  // MÉTODO DEFINIDO AQUI
   void _updateScreens() {
     _screens[0] = _buildCurrentMenuScreen();
     _screens[1] = _buildCartScreen();
@@ -130,29 +173,32 @@ class _MainNavigatorState extends State<MainNavigator> with _CartManager, _Navig
       body: Row(
         children: [
           PermanentSidebar(
-            selectedIndex: _selectedIndex, // Propriedade do _NavigationManager
-            cartItemCount: _cartItemCount, // Propriedade do _CartManager
+            selectedIndex: _selectedIndex,
+            cartItemCount: _cartItemCount,
             onTap: (index) {
-              if (index == 0 && _activeMenu == null) { // Propriedade _activeMenu
-                _onMenuItemTapped(2); // Método do _NavigationManager
+              if (index == 0 && _activeMenu == null) {
+                _onMenuItemTapped(2); // Vai para a Home
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Use "Clique para Iniciar o Pedido" na Home para carregar o Cardápio.')),
                 );
               } else {
-                _onMenuItemTapped(index); // Método do _NavigationManager
+                _onMenuItemTapped(index);
               }
             },
-            // Passa a lógica de categoria para que o Sidebar possa construir o submenu
             isMenuSelected: _selectedIndex == 0,
-            selectedCategoryName: _selectedCategoryName, // Propriedade do _CategoryManager
+
+            // NOVO: Passando a lista de categorias para o Sidebar
+            categories: _categories,
+
+            selectedCategoryName: _selectedCategoryName,
             onCategoryTap: (categoryName) {
               setState(() {
-                _selectedCategoryName = categoryName; // Atualiza o estado da categoria
+                _selectedCategoryName = categoryName;
               });
             },
           ),
           Expanded(
-            child: _screens[_selectedIndex], // Propriedade do _NavigationManager
+            child: _screens[_selectedIndex],
           ),
         ],
       ),
@@ -160,6 +206,7 @@ class _MainNavigatorState extends State<MainNavigator> with _CartManager, _Navig
   }
 
   Widget _buildCartIcon(BuildContext context) {
+    // ... (código do _buildCartIcon não precisa de alteração)
     return Stack(
       children: [
         IconButton(
@@ -171,7 +218,7 @@ class _MainNavigatorState extends State<MainNavigator> with _CartManager, _Navig
           },
           tooltip: 'Carrinho de Pedidos',
         ),
-        if (_cartItemCount > 0) // Propriedade do _CartManager
+        if (_cartItemCount > 0)
           Positioned(
             right: 5,
             top: 5,
@@ -205,23 +252,22 @@ class _MainNavigatorState extends State<MainNavigator> with _CartManager, _Navig
 // MIXINS
 // ----------------------------------------------------------------------------
 
-// Mixin para gerenciar a Lógica de Navegação
 mixin _NavigationManager on State<MainNavigator> {
-  late int _selectedIndex; // DEFINIÇÃO AQUI
-  late List<Widget> _screens; // DEFINIÇÃO AQUI
+  late int _selectedIndex;
+  late List<Widget> _screens;
 
-  void _onMenuItemTapped(int index) { // DEFINIÇÃO AQUI
+  void _onMenuItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
   }
 }
 
-// Mixin para gerenciar a Lógica do Carrinho
 mixin _CartManager on State<MainNavigator> {
+  // ... (código do _CartManager não precisa de alteração)
   List<CartItem> _cartItems = [];
   double get _cartTotal => _cartItems.fold(0.0, (sum, item) => sum + item.subtotal);
-  int get _cartItemCount => _cartItems.fold(0, (sum, item) => sum + item.quantity); // DEFINIÇÃO AQUI
+  int get _cartItemCount => _cartItems.fold(0, (sum, item) => sum + item.quantity);
 
   void _addItemToCart(Product product, int quantity) {
     setState(() {
@@ -253,19 +299,9 @@ mixin _CartManager on State<MainNavigator> {
   }
 }
 
-// Mixin para gerenciar a Lógica de Categorias
+// ALTERADO: Mixin de Categoria agora é mais simples
 mixin _CategoryManager on State<MainNavigator> {
-  late String _selectedCategoryName; // DEFINIÇÃO AQUI
-
-  IconData _getCategoryIcon(String iconName) {
-    switch (iconName) {
-      case 'star': return Icons.star;
-      case 'dinner_dining': return Icons.dinner_dining;
-      case 'lunch_dining': return Icons.lunch_dining;
-      case 'tapas': return Icons.tapas;
-      case 'local_bar': return Icons.local_bar;
-      case 'cake': return Icons.cake;
-      default: return Icons.category;
-    }
-  }
+  late String _selectedCategoryName;
+// A função _getCategoryIcon foi movida para o widget 'SidebarCategoryMenu'
+// pois é uma responsabilidade de UI e não de lógica de estado do navigator.
 }

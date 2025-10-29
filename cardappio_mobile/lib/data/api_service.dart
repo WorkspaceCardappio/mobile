@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 
 
 import '../core/constants.dart';
+import '../model/category.dart';
 import '../model/menu.dart';
 import '../model/ticket.dart';
 
@@ -34,6 +35,22 @@ class ApiService {
       }
     } catch (e) {
       throw Exception('Erro de conexão: Verifique se a API está rodando em $kBaseUrl. (${e.toString()})');
+    }
+  }
+
+  static Future<List<Category>> fetchCategories(String menuId) async {
+    final String endpoint = '$kCategoriesEndpoint/d2e3f4a5-b1c6-7890-1234-567890abcdef/flutter-categories';    try {
+      final response = await http.get(Uri.parse(endpoint));
+      if (response.statusCode == 200) {
+        final List<dynamic> categoriesJson = json.decode(utf8.decode(response.bodyBytes));
+        return categoriesJson
+            .map((json) => Category.fromJson(json as Map<String, dynamic>))
+            .toList();
+      } else {
+        throw Exception('Falha ao carregar categorias. Status: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erro de conexão ao buscar categorias: $e');
     }
   }
 

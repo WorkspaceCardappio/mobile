@@ -2,28 +2,40 @@ import 'package:flutter/material.dart';
 // Mantenha suas importações de mock_data e product aqui
 import 'package:cardappio_mobile/data/mock_data.dart';
 
+import '../../model/category.dart';
+
 
 class SidebarCategoryMenu extends StatelessWidget {
   final bool isExpanded;
   final String selectedCategoryName;
   final Function(String categoryName) onCategoryTap;
+  final List<Category> categories;
 
   const SidebarCategoryMenu({
     super.key,
     required this.isExpanded,
     required this.selectedCategoryName,
     required this.onCategoryTap,
+    required this.categories,
   });
 
-  IconData _getCategoryIcon(String iconName) {
-    switch (iconName) {
-      case 'star': return Icons.star;
-      case 'dinner_dining': return Icons.dinner_dining;
-      case 'lunch_dining': return Icons.lunch_dining;
-      case 'tapas': return Icons.tapas;
-      case 'local_bar': return Icons.local_bar;
-      case 'cake': return Icons.cake;
-      default: return Icons.category;
+  IconData _getCategoryIcon(String categoryName) {
+    switch (categoryName.toLowerCase()) {
+      case 'destaques do chef':
+        return Icons.star;
+      case 'pratos principais':
+        return Icons.dinner_dining;
+      case 'lanches e burgers':
+      case 'hambúrgueres':
+        return Icons.lunch_dining;
+      case 'porções e petiscos':
+        return Icons.tapas;
+      case 'bebidas':
+        return Icons.local_bar;
+      case 'sobremesas':
+        return Icons.cake;
+      default:
+        return Icons.category;
     }
   }
 
@@ -31,6 +43,13 @@ class SidebarCategoryMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+
+    if (categories.isEmpty && isExpanded) {
+      return Container(
+        padding: const EdgeInsets.all(16.0),
+        child: const Center(child: CircularProgressIndicator(strokeWidth: 2.0)),
+      );
+    }
 
     // NOVO: Cor de fundo para o menu inteiro.
     // Usamos Color.alphaBlend para misturar a cor do texto (onSurface) com 5% de opacidade
@@ -68,7 +87,7 @@ class SidebarCategoryMenu extends StatelessWidget {
               opacity: isExpanded ? 1.0 : 0.0,
               duration: const Duration(milliseconds: 200),
               child: Column(
-                children: mockCategories.map((category) {
+                children: categories.map((category) {
                   final isSelected = category.name == selectedCategoryName;
 
                   return Container(
@@ -84,7 +103,7 @@ class SidebarCategoryMenu extends StatelessWidget {
                     child: ListTile(
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 2.0),
                       leading: Icon(
-                        _getCategoryIcon(category.icon),
+                        _getCategoryIcon(category.name),
                         color: isSelected
                             ? colorScheme.primary
                             : unselectedItemColor.withOpacity(0.7),
