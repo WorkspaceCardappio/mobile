@@ -1,53 +1,58 @@
 import 'package:flutter/material.dart';
 
-
 import '../../../data/api_service.dart';
 import '../../../model/menu.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   final Function(Menu menu) onQuickOrder;
+  final ApiService apiService;
 
-  const HomeScreen({super.key, required this.onQuickOrder});
+  const HomeScreen({
+    super.key,
+    required this.onQuickOrder,
+    required this.apiService,
+  });
 
-  void _handleQuickOrder(BuildContext context) async {
-    final overlay = OverlayEntry(
-      builder: (context) => Container(
-        color: Colors.black54,
-        child: const Center(child: CircularProgressIndicator(color: Colors.white)),
-      ),
-    );
-    Overlay.of(context).insert(overlay);
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  bool _isLoading = false;
+
+  Future<void> _performQuickOrder() async {
+    setState(() {
+      _isLoading = true;
+    });
 
     try {
-      final List<Menu> menus = await ApiService.fetchMenus();
-
+      final List<Menu> menus = await widget.apiService.fetchMenus();
       final Menu? activeMenu = menus.isNotEmpty
           ? menus.firstWhere((m) => m.active, orElse: () => menus.first)
           : null;
 
       if (activeMenu != null) {
-        onQuickOrder(activeMenu);
+        widget.onQuickOrder(activeMenu);
       } else {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Nenhum cardápio disponível para iniciar o pedido.'),
-              duration: Duration(seconds: 3),
-            ),
-          );
-        }
+        _showErrorSnackBar('Nenhum cardápio disponível para iniciar o pedido.');
       }
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro ao buscar Cardápio: ${e.toString().split(':').last.trim()}'),
-            duration: const Duration(seconds: 4),
-          ),
-        );
-      }
+      final errorMessage = e.toString().split(':').last.trim();
+      _showErrorSnackBar('Erro ao buscar Cardápio: $errorMessage');
     } finally {
-      overlay.remove();
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
     }
   }
 
@@ -63,7 +68,7 @@ class HomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 30),
           GestureDetector(
-            onTap: () => _handleQuickOrder(context),
+            onTap: _isLoading ? null : _performQuickOrder,
             child: Container(
               padding: const EdgeInsets.all(40),
               decoration: BoxDecoration(
@@ -77,11 +82,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ],
               ),
-              child: const Icon(
-                Icons.fastfood,
-                size: 100,
-                color: Colors.white,
-              ),
+              child: _buildButtonChild(),
             ),
           ),
           const SizedBox(height: 20),
@@ -89,9 +90,27 @@ class HomeScreen extends StatelessWidget {
             'Clique para Iniciar o Pedido',
             style: Theme.of(context).textTheme.titleLarge!.copyWith(color: Theme.of(context).colorScheme.secondary),
           ),
-          const SizedBox(height: 8),
         ],
       ),
     );
+  }
+
+  Widget _buildButtonChild() {
+    if (_isLoading) {
+      return const SizedBox(
+        width: 100,
+        height: 100,
+        child: CircularProgressIndicator(
+          color: Colors.white,
+          strokeWidth: 6,
+        ),
+      );
+    } else {
+      return const Icon(
+        Icons.fastfood,
+        size: 100,
+        color: Colors.white,
+      );
+    }
   }
 }

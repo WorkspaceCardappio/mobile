@@ -51,14 +51,14 @@ class CartScreen extends StatelessWidget {
                   ),
                   title: Text(item.product.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 17)),
 
-                  // ALTERADO: Mostra o preço unitário já com as personalizações
+
                   subtitle: Text('Unitário: R\$ ${(item.lineTotal / item.quantity).toStringAsFixed(2)}'),
 
                   trailing: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      // ALTERADO: Usa 'lineTotal' em vez do antigo 'subtotal'
+
                       Text('R\$ ${item.lineTotal.toStringAsFixed(2)}', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Theme.of(context).colorScheme.secondary)),
                       const SizedBox(height: 4), // Pequeno espaço para melhor alinhamento
                       IconButton(

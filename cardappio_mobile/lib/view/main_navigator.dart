@@ -1,22 +1,20 @@
-// NOVOS IMPORTS PARA O FLUXO DE PEDIDO
-import 'package:cardappio_mobile/model/category.dart';
-import 'package:cardappio_mobile/model/order_create_dto.dart';
-import 'package:cardappio_mobile/model/ticket.dart';
-import 'package:cardappio_mobile/view/common/ticket_selection_dialog.dart';
-
-import 'package:cardappio_mobile/view/screens/cart/cart_screen.dart';
-import 'package:cardappio_mobile/view/screens/home/home_screen.dart';
-import 'package:cardappio_mobile/view/screens/menu/menu_detail_screen.dart';
-import 'package:cardappio_mobile/view/screens/menu/product_detail_screen.dart';
-import 'package:cardappio_mobile/view/screens/payment/payment_screen.dart';
-import 'package:cardappio_mobile/view/screens/ticket/ticket_screen.dart';
 import 'package:flutter/material.dart';
 
 import '../data/api_service.dart';
 import '../model/cart_item.dart';
+import '../model/category.dart';
 import '../model/menu.dart';
+import '../model/order_create_dto.dart';
 import '../model/product.dart';
+import '../model/ticket.dart';
 import 'common/permanent_sidebar.dart';
+import 'common/ticket_selection_dialog.dart';
+import 'screens/cart/cart_screen.dart';
+import 'screens/home/home_screen.dart';
+import 'screens/menu/menu_detail_screen.dart';
+import 'screens/menu/product_detail_screen.dart';
+import 'screens/payment/payment_screen.dart';
+import 'screens/ticket/ticket_screen.dart';
 
 class MainNavigator extends StatefulWidget {
   final int initialIndex;
@@ -26,7 +24,11 @@ class MainNavigator extends StatefulWidget {
   State<MainNavigator> createState() => _MainNavigatorState();
 }
 
-class _MainNavigatorState extends State<MainNavigator> with _CartManager, _NavigationManager, _CategoryManager {
+class _MainNavigatorState extends State<MainNavigator>
+    with _CartManager, _NavigationManager, _CategoryManager {
+
+  late final ApiService _apiService;
+
   Menu? _activeMenu;
   List<Category> _categories = [];
   bool _isLoadingCategories = false;
@@ -34,19 +36,17 @@ class _MainNavigatorState extends State<MainNavigator> with _CartManager, _Navig
   @override
   void initState() {
     super.initState();
+    _apiService = ApiService();
     _selectedIndex = widget.initialIndex;
     _selectedCategoryName = '';
     _initializeScreens();
   }
 
   Future<void> _loadCategories(String menuId) async {
-    setState(() {
-      _isLoadingCategories = true;
-      _categories = [];
-    });
+    setState(() => _isLoadingCategories = true);
 
     try {
-      final fetchedCategories = await ApiService.fetchCategories(menuId);
+      final fetchedCategories = await _apiService.fetchCategories(menuId);
       if (mounted) {
         setState(() {
           _categories = fetchedCategories;
@@ -58,14 +58,14 @@ class _MainNavigatorState extends State<MainNavigator> with _CartManager, _Navig
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao carregar categorias: ${e.toString()}')),
+          SnackBar(
+            content: Text('Erro ao carregar categorias: ${e.toString()}'),
+          ),
         );
       }
     } finally {
       if (mounted) {
-        setState(() {
-          _isLoadingCategories = false;
-        });
+        setState(() => _isLoadingCategories = false);
       }
     }
   }
@@ -74,10 +74,92 @@ class _MainNavigatorState extends State<MainNavigator> with _CartManager, _Navig
     _screens = [
       _buildCurrentMenuScreen(),
       _buildCartScreen(),
-      HomeScreen(onQuickOrder: _handleQuickOrder),
-      const TicketScreen(),
-      const PaymentScreen(),
+      HomeScreen(
+        onQuickOrder: _handleQuickOrder,
+        apiService: _apiService,
+      ),
+      TicketScreen(apiService: _apiService),
+      PaymentScreen(apiService: _apiService),
     ];
+  }
+
+  void _updateScreens() {
+    _screens[0] = _buildCurrentMenuScreen();
+    _screens[1] = _buildCartScreen();
+  }
+
+  void _handleQuickOrder(Menu menu) {
+    setState(() {
+      _activeMenu = menu;
+      _selectedIndex = 0;
+    });
+    _loadCategories(menu.id);
+  }
+
+  void _navigateToProductDetail(Product product) async {
+    final result = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProductDetailScreen(
+          product: product,
+          apiService: _apiService,
+        ),
+      ),
+    );
+
+    if (result != null) {
+      _addItemToCart(product, result);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    _updateScreens();
+
+    return Scaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        title: const Text(
+          'Cardappio',
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 20),
+        ),
+        elevation: 4,
+        actions: [
+          _buildCartIcon(),
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: Row(
+        children: [
+          PermanentSidebar(
+            selectedIndex: _selectedIndex,
+            cartItemCount: _cartItemCount,
+            onTap: (index) {
+              if (index == 0 && _activeMenu == null) {
+                _onMenuItemTapped(2);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Use "Clique para Iniciar o Pedido" na Home para carregar o Cardápio.',
+                    ),
+                  ),
+                );
+              } else {
+                _onMenuItemTapped(index);
+              }
+            },
+            isMenuSelected: _selectedIndex == 0,
+            categories: _categories,
+            selectedCategoryName: _selectedCategoryName,
+            onCategoryTap: (categoryName) =>
+                setState(() => _selectedCategoryName = categoryName),
+          ),
+          Expanded(
+            child: _screens[_selectedIndex],
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildCurrentMenuScreen() {
@@ -92,7 +174,10 @@ class _MainNavigatorState extends State<MainNavigator> with _CartManager, _Navig
           children: [
             Icon(Icons.menu_book, size: 60, color: Colors.grey),
             SizedBox(height: 16),
-            Text('Selecione um cardápio na tela Home para começar.', style: TextStyle(fontSize: 18)),
+            Text(
+              'Selecione um cardápio na tela Home para começar.',
+              style: TextStyle(fontSize: 18),
+            ),
           ],
         ),
       );
@@ -101,7 +186,7 @@ class _MainNavigatorState extends State<MainNavigator> with _CartManager, _Navig
     String selectedCategoryId = '';
     if (_categories.isNotEmpty && _selectedCategoryName.isNotEmpty) {
       final selectedCategory = _categories.firstWhere(
-            (category) => category.name == _selectedCategoryName,
+            (cat) => cat.name == _selectedCategoryName,
         orElse: () => Category(id: '', name: ''),
       );
       selectedCategoryId = selectedCategory.id;
@@ -112,6 +197,7 @@ class _MainNavigatorState extends State<MainNavigator> with _CartManager, _Navig
       selectedCategoryName: _selectedCategoryName,
       selectedCategoryId: selectedCategoryId,
       onProductTap: _navigateToProductDetail,
+      apiService: _apiService,
     );
   }
 
@@ -124,80 +210,7 @@ class _MainNavigatorState extends State<MainNavigator> with _CartManager, _Navig
     );
   }
 
-  void _handleQuickOrder(Menu menu) {
-    setState(() {
-      _activeMenu = menu;
-      _selectedIndex = 0;
-      _updateScreens();
-    });
-    _loadCategories(menu.id);
-  }
-
-  void _navigateToProductDetail(Product product) async {
-    final Map<String, dynamic>? result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ProductDetailScreen(product: product),
-      ),
-    );
-
-    if (result != null) {
-      _addItemToCart(product, result);
-    }
-  }
-
-  void _updateScreens() {
-    _screens[0] = _buildCurrentMenuScreen();
-    _screens[1] = _buildCartScreen();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    _updateScreens();
-
-    return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: const Text('Cardappio', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 20)),
-        elevation: 4,
-        actions: [
-          _buildCartIcon(context),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: Row(
-        children: [
-          PermanentSidebar(
-            selectedIndex: _selectedIndex,
-            cartItemCount: _cartItemCount,
-            onTap: (index) {
-              if (index == 0 && _activeMenu == null) {
-                _onMenuItemTapped(2);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Use "Clique para Iniciar o Pedido" na Home para carregar o Cardápio.')),
-                );
-              } else {
-                _onMenuItemTapped(index);
-              }
-            },
-            isMenuSelected: _selectedIndex == 0,
-            categories: _categories,
-            selectedCategoryName: _selectedCategoryName,
-            onCategoryTap: (categoryName) {
-              setState(() {
-                _selectedCategoryName = categoryName;
-              });
-            },
-          ),
-          Expanded(
-            child: _screens[_selectedIndex],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCartIcon(BuildContext context) {
+  Widget _buildCartIcon() {
     return Stack(
       children: [
         IconButton(
@@ -219,10 +232,7 @@ class _MainNavigatorState extends State<MainNavigator> with _CartManager, _Navig
                 color: Theme.of(context).colorScheme.secondary,
                 borderRadius: BorderRadius.circular(10),
               ),
-              constraints: const BoxConstraints(
-                minWidth: 18,
-                minHeight: 18,
-              ),
+              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
               child: Text(
                 '$_cartItemCount',
                 style: const TextStyle(
@@ -239,25 +249,23 @@ class _MainNavigatorState extends State<MainNavigator> with _CartManager, _Navig
   }
 }
 
-// ----------------------------------------------------------------------------
-// MIXINS
-// ----------------------------------------------------------------------------
-
 mixin _NavigationManager on State<MainNavigator> {
   late int _selectedIndex;
   late List<Widget> _screens;
 
   void _onMenuItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+    setState(() => _selectedIndex = index);
   }
 }
 
 mixin _CartManager on State<MainNavigator> {
   List<CartItem> _cartItems = [];
-  double get _cartTotal => _cartItems.fold(0.0, (sum, item) => sum + item.lineTotal);
-  int get _cartItemCount => _cartItems.fold(0, (sum, item) => sum + item.quantity);
+  double get _cartTotal =>
+      _cartItems.fold(0.0, (sum, item) => sum + item.lineTotal);
+  int get _cartItemCount =>
+      _cartItems.fold(0, (sum, item) => sum + item.quantity);
+
+  ApiService get _apiService => (this as _MainNavigatorState)._apiService;
 
   void _addItemToCart(Product product, Map<String, dynamic> details) {
     setState(() {
@@ -271,7 +279,11 @@ mixin _CartManager on State<MainNavigator> {
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('✅ ${details['quantity']}x ${product.name} adicionado ao carrinho!')),
+        SnackBar(
+          content: Text(
+            '✅ ${details['quantity']}x ${product.name} adicionado ao carrinho!',
+          ),
+        ),
       );
     }
   }
@@ -287,63 +299,48 @@ mixin _CartManager on State<MainNavigator> {
     }
   }
 
-  // ============================================================================
-  // MÉTODO CORRIGIDO
-  // ============================================================================
   Future<void> _handleOrderConfirmation() async {
     if (_cartItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Seu carrinho está vazio! Adicione itens para continuar.')),
+        const SnackBar(content: Text('Seu carrinho está vazio!')),
       );
       return;
     }
 
     final selectedTicket = await showDialog<Ticket>(
       context: context,
-      builder: (BuildContext context) {
-        return const TicketSelectionDialog();
-      },
+      builder: (_) => TicketSelectionDialog(),
     );
 
     if (selectedTicket == null) return;
 
-    List<OrderItemDTO> orderItems = [];
-    for (var cartItem in _cartItems) {
+    final orderItems = _cartItems.map((cartItem) {
       final addonsMap = cartItem.details['addons'] as Map<String, int>? ?? {};
-      List<OrderItemAdditionalDTO> additionalDtos = addonsMap.entries.map((entry) {
-        return OrderItemAdditionalDTO(additionalId: entry.key, quantity: entry.value);
+      final additionalDtos = addonsMap.entries.map((entry) {
+        return OrderItemAdditionalDTO(
+          additionalId: entry.key,
+          quantity: entry.value,
+        );
       }).toList();
 
-      final itemDto = OrderItemDTO(
+      return OrderItemDTO(
         productId: cartItem.product.id,
         quantity: cartItem.quantity,
         variableId: cartItem.details['variable'] as String?,
         observations: cartItem.details['observations'] as String?,
         additionals: additionalDtos,
       );
-      orderItems.add(itemDto);
-    }
+    }).toList();
 
-    // --------------------------------------------------------------------------
-    // ALTERAÇÃO PRINCIPAL AQUI: Montagem do DTO corrigida
-    // --------------------------------------------------------------------------
     final orderDto = OrderCreateDTO(
-      // ANTES: ticketId: selectedTicket.id
-      // CORRIGIDO: Agora cria um objeto IdDTO, como o backend espera.
       ticket: IdDTO(id: selectedTicket.id),
-
-      // ADICIONADO: O campo de status que estava faltando.
-      status: EnumDTO(code: "1"), // Use o código esperado pelo seu backend (ex: "SENT", "PENDING")
-
+      status: EnumDTO(code: "1"),
       items: orderItems,
     );
-    // --------------------------------------------------------------------------
 
     try {
-      await ApiService.createOrder(orderDto);
-      setState(() {
-        _cartItems = [];
-      });
+      await _apiService.createOrder(orderDto);
+      setState(() => _cartItems = []);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -353,7 +350,9 @@ mixin _CartManager on State<MainNavigator> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ Erro ao enviar o pedido: ${e.toString()}')),
+          SnackBar(
+            content: Text('❌ Erro ao enviar o pedido: ${e.toString()}'),
+          ),
         );
       }
     }

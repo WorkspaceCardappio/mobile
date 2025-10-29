@@ -30,7 +30,6 @@ class Product {
   }
 }
 
-// ... (outras classes: Product, ProductCategory, etc.)
 
 class ProductAddOn {
   final String id;
@@ -39,7 +38,6 @@ class ProductAddOn {
 
   ProductAddOn({required this.id, required this.name, required this.price});
 
-  // NOVO: Adicione este factory constructor para ler o JSON da API
   factory ProductAddOn.fromJson(Map<String, dynamic> json) {
     return ProductAddOn(
       id: json['id'] as String,
@@ -49,11 +47,6 @@ class ProductAddOn {
   }
 }
 
-// ... (outras classes: ProductOption, ProductVariable)
-
-// =========================================================================
-// CORREÇÃO PRINCIPAL AQUI
-// =========================================================================
 
 class ProductOption {
   final String id;
@@ -66,10 +59,7 @@ class ProductOption {
     required this.priceAdjustment
   });
 
-  // NOVO: Adicione este factory constructor para corrigir o erro.
   factory ProductOption.fromJson(Map<String, dynamic> json) {
-    // Note que estamos mapeando o campo 'price' que vem da API
-    // para o nosso campo 'priceAdjustment' no modelo do Flutter.
     return ProductOption(
       id: json['id'] as String,
       name: json['name'] as String,
@@ -85,12 +75,9 @@ class ProductVariable {
 
   ProductVariable({required this.id, required this.name, required this.options});
 
-  // NOVO: É uma boa prática adicionar o fromJson aqui também.
   factory ProductVariable.fromJson(Map<String, dynamic> json) {
-    // Pega a lista de 'options' do JSON
     var optionsListFromJson = json['options'] as List<dynamic>? ?? [];
 
-    // Converte a lista de JSON em uma lista de objetos ProductOption
     List<ProductOption> parsedOptions = optionsListFromJson
         .map((optionJson) => ProductOption.fromJson(optionJson as Map<String, dynamic>))
         .toList();

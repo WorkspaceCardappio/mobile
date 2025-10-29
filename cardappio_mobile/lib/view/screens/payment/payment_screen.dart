@@ -1,28 +1,26 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-
 import '../../../data/api_service.dart';
 import '../../../model/ticket.dart';
 import '../../../model/ticket_item.dart';
 
 class PaymentScreen extends StatefulWidget {
   final Ticket? preSelectedTicket;
+  final ApiService apiService;
 
-  const PaymentScreen({super.key, this.preSelectedTicket});
+  const PaymentScreen({
+    super.key,
+    this.preSelectedTicket,
+    required this.apiService,
+  });
 
   @override
   State<PaymentScreen> createState() => _PaymentScreenState();
 }
 
 class _PaymentScreenState extends State<PaymentScreen> {
-  Future<List<Ticket>>? _ticketsFuture;
   Ticket? _selectedTicket;
-
   TicketDetail? _ticketDetail;
-  Future<TicketDetail>? _ticketDetailFuture;
-
   int _currentStep = 0;
-
   String _paymentOption = 'total';
   double _partialAmount = 0.0;
   final TextEditingController _partialController = TextEditingController();
@@ -30,12 +28,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   @override
   void initState() {
     super.initState();
-    _ticketsFuture = ApiService.fetchTickets();
     _selectedTicket = widget.preSelectedTicket;
-
-    if (_selectedTicket != null) {
-      _loadTicketDetails(_selectedTicket!);
-    }
   }
 
   @override
@@ -44,22 +37,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
     super.dispose();
   }
 
-  // --- Lógica de Estado e API ---
-
-  void _loadTicketDetails(Ticket ticket) {
-    setState(() {
-      _selectedTicket = ticket;
-      _ticketDetailFuture = ApiService.fetchTicketDetails(ticket.id);
-
-      _ticketDetail = null;
-      _updatePartialAmount(ticket.total);
-      _paymentOption = 'total';
-
-      // Volta ao primeiro passo se estiver no segundo
-      if (_currentStep == 1) {
-        _currentStep = 0;
-      }
-    });
+  Future<TicketDetail> _fetchTicketDetails(String ticketId) async {
+    final detail = await widget.apiService.fetchTicketDetails(ticketId);
+    if (mounted) {
+      setState(() {
+        _ticketDetail = detail;
+        _updatePartialAmount(detail.total);
+      });
+    }
+    return detail;
   }
 
   void _updatePartialAmount(double total) {
@@ -71,7 +57,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   void _handlePaymentProcessing() async {
     if (_selectedTicket == null || _ticketDetail == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Comanda não selecionada ou detalhes não carregados.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Comanda não selecionada ou detalhes não carregados.'),
+        ),
+      );
       return;
     }
 
@@ -79,30 +69,38 @@ class _PaymentScreenState extends State<PaymentScreen> {
     if (_paymentOption == 'total') {
       amountToPay = _ticketDetail!.total;
     } else {
-      amountToPay = double.tryParse(_partialController.text.replaceAll(',', '.')) ?? 0.0;
+      amountToPay =
+          double.tryParse(_partialController.text.replaceAll(',', '.')) ?? 0.0;
       if (amountToPay <= 0 || amountToPay > _ticketDetail!.total) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Valor parcial inválido.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Valor parcial inválido.')),
+        );
         return;
       }
     }
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('Processando pagamento de R\$ ${amountToPay.toStringAsFixed(2)} para Comanda #${_selectedTicket!.id}...'),
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Processando pagamento de R\$ ${amountToPay.toStringAsFixed(2)} para Comanda #${_selectedTicket!.id}...',
+        ),
+      ),
+    );
 
-    final result = await ApiService.payTicket(_selectedTicket!.id);
+    final result = await widget.apiService.payTicket(_selectedTicket!.id);
 
     if (!mounted) return;
     if (result) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Pagamento realizado com sucesso!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('✅ Pagamento realizado com sucesso!')),
+      );
 
       if (_paymentOption == 'total') {
         setState(() {
           _selectedTicket = null;
           _ticketDetail = null;
           _currentStep = 0;
-          _ticketsFuture = ApiService.fetchTickets();
         });
       }
 
@@ -110,17 +108,22 @@ class _PaymentScreenState extends State<PaymentScreen> {
         Navigator.pop(context, true);
       }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('❌ Falha na transação. Tente novamente.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('❌ Falha na transação. Tente novamente.'),
+        ),
+      );
     }
   }
-
-  // --- Widgets de Conteúdo do Stepper ---
 
   Widget _buildStep1SelectTicket(List<Ticket> availableTickets) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Selecione a comanda para visualizar os detalhes:', style: Theme.of(context).textTheme.bodyMedium),
+        Text(
+          'Selecione a comanda para visualizar os detalhes:',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
         const SizedBox(height: 10),
         DropdownButtonFormField<Ticket>(
           decoration: InputDecoration(
@@ -131,41 +134,55 @@ class _PaymentScreenState extends State<PaymentScreen> {
           items: availableTickets.map((ticket) {
             return DropdownMenuItem(
               value: ticket,
-              child: Text('Mesa ${ticket.number} - Total: R\$ ${ticket.total.toStringAsFixed(2)}'),
+              child: Text(
+                'Mesa ${ticket.number} - Total: R\$ ${ticket.total.toStringAsFixed(2)}',
+              ),
             );
           }).toList(),
           onChanged: (Ticket? newValue) {
             if (newValue != null) {
-              _loadTicketDetails(newValue);
+              setState(() {
+                _selectedTicket = newValue;
+                _ticketDetail = null;
+                _paymentOption = 'total';
+                if (_currentStep == 1) {
+                  _currentStep = 0;
+                }
+              });
             }
           },
           hint: const Text('Selecione uma comanda'),
         ),
-        if (_ticketDetailFuture != null)
-          _buildTicketDetailsLoader(),
+        if (_selectedTicket != null) _buildTicketDetailsLoader(),
       ],
     );
   }
 
   Widget _buildTicketDetailsLoader() {
     return FutureBuilder<TicketDetail>(
-      future: _ticketDetailFuture,
+      future: _fetchTicketDetails(_selectedTicket!.id),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Padding(
             padding: EdgeInsets.only(top: 20.0),
             child: Center(child: CircularProgressIndicator()),
           );
-        } else if (snapshot.hasError) {
+        }
+
+        if (snapshot.hasError) {
           return Padding(
             padding: const EdgeInsets.only(top: 20.0),
-            child: Text('Erro ao carregar detalhes: ${snapshot.error.toString().split(':').last.trim()}', style: const TextStyle(color: Colors.red)),
+            child: Text(
+              'Erro ao carregar detalhes: ${snapshot.error.toString().split(':').last.trim()}',
+              style: const TextStyle(color: Colors.red),
+            ),
           );
-        } else if (snapshot.hasData) {
-          _ticketDetail = snapshot.data;
+        }
 
+        if (snapshot.hasData) {
           return _buildTicketDetailConfirmation(snapshot.data!);
         }
+
         return const SizedBox.shrink();
       },
     );
@@ -183,37 +200,57 @@ class _PaymentScreenState extends State<PaymentScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Mesa ${detail.number}', style: Theme.of(context).textTheme.titleLarge),
-                Text('Comanda #${detail.id.substring(0, 4)}', style: Theme.of(context).textTheme.bodyMedium),
+                Text(
+                  'Mesa ${detail.number}',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                Text(
+                  'Comanda #${detail.id.substring(0, 4)}',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
               ],
             ),
             const Divider(height: 20),
-
-            // NOVO: Exibe a lista de itens
-            Text('Itens na Comanda:', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Itens na Comanda:',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 8),
-
-            // Lista Condensada de Itens
             ...detail.items.map((item) {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 4.0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Expanded(child: Text('${item.quantity}x ${item.productName}', overflow: TextOverflow.ellipsis)),
-                    Text('R\$ ${item.subtotal.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                    Expanded(
+                      child: Text(
+                        '${item.quantity}x ${item.productName}',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Text(
+                      'R\$ ${item.subtotal.toStringAsFixed(2)}',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
                   ],
                 ),
               );
             }).toList(),
-
             const Divider(height: 20),
-
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Total Geral:', style: Theme.of(context).textTheme.titleLarge),
-                Text('R\$ ${detail.total.toStringAsFixed(2)}', style: Theme.of(context).textTheme.headlineMedium!.copyWith(fontSize: 24, color: Colors.green.shade700)),
+                Text(
+                  'Total Geral:',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                Text(
+                  'R\$ ${detail.total.toStringAsFixed(2)}',
+                  style: Theme.of(context).textTheme.headlineMedium!.copyWith(
+                    fontSize: 24,
+                    color: Colors.green.shade700,
+                  ),
+                ),
               ],
             ),
           ],
@@ -223,19 +260,26 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   Widget _buildStep2PaymentOptions() {
-    if (_ticketDetail == null) return const Center(child: Text('Carregando detalhes da comanda...'));
+    if (_ticketDetail == null) {
+      return const Center(child: Text('Carregando detalhes da comanda...'));
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Comanda: Mesa ${_ticketDetail!.number} | Total: R\$ ${_ticketDetail!.total.toStringAsFixed(2)}',
-          style: Theme.of(context).textTheme.titleLarge!.copyWith(fontSize: 18, color: Theme.of(context).colorScheme.secondary),
+          style: Theme.of(context).textTheme.titleLarge!.copyWith(
+            fontSize: 18,
+            color: Theme.of(context).colorScheme.secondary,
+          ),
         ),
         const Divider(height: 25),
-        Text('Selecione o Tipo de Pagamento:', style: Theme.of(context).textTheme.titleLarge),
+        Text(
+          'Selecione o Tipo de Pagamento:',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
         const SizedBox(height: 10),
-
         RadioListTile<String>(
           title: const Text('Pagamento Total'),
           value: 'total',
@@ -253,7 +297,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
           onChanged: (value) => setState(() => _paymentOption = value!),
           activeColor: Theme.of(context).colorScheme.primary,
         ),
-
         if (_paymentOption == 'partial')
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -261,7 +304,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
               controller: _partialController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(
-                labelText: 'Valor a Pagar (Máx: R\$ ${_ticketDetail!.total.toStringAsFixed(2)})',
+                labelText:
+                'Valor a Pagar (Máx: R\$ ${_ticketDetail!.total.toStringAsFixed(2)})',
                 prefixText: 'R\$ ',
                 border: const OutlineInputBorder(),
               ),
@@ -271,15 +315,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
-  // --- Lógica do Stepper ---
-
   List<Step> _buildSteps(List<Ticket> availableTickets) {
     return [
       Step(
         title: const Text('Selecionar e Conferir Comanda'),
         content: _buildStep1SelectTicket(availableTickets),
         isActive: _currentStep == 0,
-        state: _selectedTicket != null && _ticketDetail != null ? StepState.complete : StepState.editing,
+        state: _selectedTicket != null && _ticketDetail != null
+            ? StepState.complete
+            : StepState.editing,
       ),
       Step(
         title: const Text('Opções e Finalização'),
@@ -295,7 +339,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
       if (_selectedTicket != null && _ticketDetail != null) {
         setState(() => _currentStep = 1);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Por favor, carregue e confirme a comanda primeiro.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Por favor, carregue e confirme a comanda primeiro.'),
+          ),
+        );
       }
     } else {
       _handlePaymentProcessing();
@@ -304,16 +352,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   void _onStepCancel() {
     if (_currentStep > 0) {
-      setState(() {
-        _currentStep -= 1;
-        // Não limpamos _ticketDetail aqui, pois o usuário pode querer voltar rapidamente.
-      });
+      setState(() => _currentStep -= 1);
     } else {
       Navigator.pop(context);
     }
   }
-
-  // --- Método Build Principal ---
 
   @override
   Widget build(BuildContext context) {
@@ -324,30 +367,36 @@ class _PaymentScreenState extends State<PaymentScreen> {
         elevation: 0,
       ),
       body: FutureBuilder<List<Ticket>>(
-        future: _ticketsFuture,
+        future: widget.apiService.fetchTickets(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError || !snapshot.hasData) {
-            return Center(child: Text('Erro ao carregar comandas: ${snapshot.error.toString().split(':').last.trim()}'));
+          }
+
+          if (snapshot.hasError || !snapshot.hasData) {
+            return Center(
+              child: Text(
+                'Erro ao carregar comandas: ${snapshot.error.toString().split(':').last.trim()}',
+              ),
+            );
           }
 
           final availableTickets = snapshot.data!;
 
-          if (widget.preSelectedTicket != null && _selectedTicket == null && availableTickets.isNotEmpty) {
-            Ticket initialTicket = availableTickets.firstWhere(
+          if (widget.preSelectedTicket != null &&
+              _selectedTicket == null &&
+              availableTickets.isNotEmpty) {
+            final initialTicket = availableTickets.firstWhere(
                   (t) => t.id == widget.preSelectedTicket!.id,
               orElse: () => availableTickets.first,
             );
 
-            // Usamos WidgetsBinding.instance.addPostFrameCallback para evitar setState durante o build
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) {
-                _loadTicketDetails(initialTicket);
+              if (mounted && _selectedTicket == null) {
+                setState(() => _selectedTicket = initialTicket);
               }
             });
           }
-
 
           return Stepper(
             type: StepperType.vertical,
@@ -362,19 +411,34 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   children: <Widget>[
                     ElevatedButton.icon(
                       onPressed: details.onStepContinue,
-                      icon: Icon(details.currentStep == 0 ? Icons.arrow_forward : Icons.check_circle_outline),
-                      label: Text(details.currentStep == 0 ? 'Confirmar Comanda' : 'Finalizar Pagamento'),
+                      icon: Icon(
+                        details.currentStep == 0
+                            ? Icons.arrow_forward
+                            : Icons.check_circle_outline,
+                      ),
+                      label: Text(
+                        details.currentStep == 0
+                            ? 'Confirmar Comanda'
+                            : 'Finalizar Pagamento',
+                      ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: details.currentStep == 0 ? Theme.of(context).colorScheme.primary : Colors.green.shade700,
+                        backgroundColor: details.currentStep == 0
+                            ? Theme.of(context).colorScheme.primary
+                            : Colors.green.shade700,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 15),
-                        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        textStyle: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
                     TextButton(
                       onPressed: details.onStepCancel,
-                      child: Text(details.currentStep == 0 ? 'Cancelar' : 'Voltar'),
+                      child: Text(
+                        details.currentStep == 0 ? 'Cancelar' : 'Voltar',
+                      ),
                     ),
                   ],
                 ),

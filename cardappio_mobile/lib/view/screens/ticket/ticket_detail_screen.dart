@@ -1,47 +1,50 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-
-
 import '../../../data/api_service.dart';
 import '../../../model/ticket.dart';
 
-class TicketDetailScreen extends StatefulWidget {
+class TicketDetailScreen extends StatelessWidget {
   final Ticket ticket;
+  final ApiService apiService;
   final Function(Ticket ticket) onNavigateToPayment;
 
-  const TicketDetailScreen({super.key, required this.ticket, required this.onNavigateToPayment});
-
-  @override
-  State<TicketDetailScreen> createState() => _TicketDetailScreenState();
-}
-
-class _TicketDetailScreenState extends State<TicketDetailScreen> {
-  Future<TicketDetail>? _ticketDetailFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _ticketDetailFuture = ApiService.fetchTicketDetails(widget.ticket.id);
-  }
+  const TicketDetailScreen({
+    super.key,
+    required this.ticket,
+    required this.apiService,
+    required this.onNavigateToPayment,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Comanda #${widget.ticket.id} - Mesa ${widget.ticket.number}', style: const TextStyle(fontSize: 18)),
+        title: Text(
+          'Comanda #${ticket.id} - Mesa ${ticket.number}',
+          style: const TextStyle(fontSize: 18),
+        ),
         elevation: 1,
       ),
       body: FutureBuilder<TicketDetail>(
-        future: _ticketDetailFuture,
+        future: apiService.fetchTicketDetails(ticket.id),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
+          }
+
+          if (snapshot.hasError) {
             return Center(
-              child: Text('Erro ao carregar detalhes: ${snapshot.error.toString().split(':').last.trim()}', textAlign: TextAlign.center),
+              child: Text(
+                'Erro ao carregar detalhes: ${snapshot.error.toString().split(':').last.trim()}',
+                textAlign: TextAlign.center,
+              ),
             );
-          } else if (!snapshot.hasData) {
-            return const Center(child: Text('Detalhes da comanda não encontrados.'));
+          }
+
+          if (!snapshot.hasData) {
+            return const Center(
+              child: Text('Detalhes da comanda não encontrados.'),
+            );
           }
 
           final detail = snapshot.data!;
@@ -62,16 +65,31 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, TicketDetail detail, String formattedDate) {
+  Widget _buildHeader(
+      BuildContext context,
+      TicketDetail detail,
+      String formattedDate,
+      ) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Data de Abertura: $formattedDate', style: TextStyle(color: Colors.grey[600])),
+          Text(
+            'Data de Abertura: $formattedDate',
+            style: TextStyle(color: Colors.grey[600]),
+          ),
           const SizedBox(height: 8),
-          Text('Total da Comanda:', style: Theme.of(context).textTheme.titleLarge),
-          Text('R\$ ${detail.total.toStringAsFixed(2)}', style: Theme.of(context).textTheme.headlineMedium!.copyWith(color: Theme.of(context).colorScheme.primary)),
+          Text(
+            'Total da Comanda:',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          Text(
+            'R\$ ${detail.total.toStringAsFixed(2)}',
+            style: Theme.of(context).textTheme.headlineMedium!.copyWith(
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
         ],
       ),
     );
@@ -80,7 +98,10 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   Widget _buildItemsHeader(BuildContext context, TicketDetail detail) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: Text('Itens Pedidos (${detail.items.length}):', style: Theme.of(context).textTheme.titleLarge!.copyWith(fontSize: 20)),
+      child: Text(
+        'Itens Pedidos (${detail.items.length}):',
+        style: Theme.of(context).textTheme.titleLarge!.copyWith(fontSize: 20),
+      ),
     );
   }
 
@@ -94,10 +115,22 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
           margin: const EdgeInsets.only(bottom: 10),
           child: ListTile(
             leading: CircleAvatar(
-              backgroundColor: Theme.of(context).colorScheme.secondary.withOpacity(0.1),
-              child: Text('${item.quantity}x', style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.secondary)),
+              backgroundColor: Theme.of(context)
+                  .colorScheme
+                  .secondary
+                  .withOpacity(0.1),
+              child: Text(
+                '${item.quantity}x',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.secondary,
+                ),
+              ),
             ),
-            title: Text(item.productName, style: const TextStyle(fontWeight: FontWeight.w600)),
+            title: Text(
+              item.productName,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
             subtitle: Text('R\$ ${item.unitPrice.toStringAsFixed(2)} / un.'),
             trailing: Text(
               'R\$ ${item.subtotal.toStringAsFixed(2)}',
@@ -115,10 +148,16 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
       width: double.infinity,
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 5, offset: Offset(0, -2))],
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 5,
+            offset: Offset(0, -2),
+          ),
+        ],
       ),
       child: ElevatedButton.icon(
-        onPressed: () => widget.onNavigateToPayment(widget.ticket),
+        onPressed: () => onNavigateToPayment(ticket),
         icon: const Icon(Icons.payment),
         label: Text('Pagar Comanda (R\$ ${detail.total.toStringAsFixed(2)})'),
         style: ElevatedButton.styleFrom(

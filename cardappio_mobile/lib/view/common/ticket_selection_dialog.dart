@@ -10,12 +10,14 @@ class TicketSelectionDialog extends StatefulWidget {
 }
 
 class _TicketSelectionDialogState extends State<TicketSelectionDialog> {
+
+  final ApiService _apiService = ApiService();
   late Future<List<Ticket>> _ticketsFuture;
 
   @override
   void initState() {
     super.initState();
-    _ticketsFuture = ApiService.fetchTickets();
+    _ticketsFuture = _apiService.fetchTickets();
   }
 
   @override
@@ -46,7 +48,6 @@ class _TicketSelectionDialogState extends State<TicketSelectionDialog> {
                 return ListTile(
                   title: Text('Comanda #${ticket.number}'),
                   onTap: () {
-                    // Retorna a comanda selecionada para quem chamou o dialog
                     Navigator.of(context).pop(ticket);
                   },
                 );

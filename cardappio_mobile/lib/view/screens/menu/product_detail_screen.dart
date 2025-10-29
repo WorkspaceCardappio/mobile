@@ -2,24 +2,27 @@ import 'package:flutter/material.dart';
 import '../../../data/api_service.dart';
 import '../../../model/product.dart';
 
-// O import de mock_data não é mais necessário aqui.
-
 class ProductDetailScreen extends StatefulWidget {
   final Product product;
+  final ApiService apiService;
 
-  const ProductDetailScreen({super.key, required this.product});
+  const ProductDetailScreen({
+    super.key,
+    required this.product,
+    required this.apiService,
+  });
 
   @override
   State<ProductDetailScreen> createState() => _ProductDetailScreenState();
 }
 
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
-  // --- Estados para gerenciar a busca de dados da API ---
-  late Future<void> _detailsFuture; // Um único Future para carregar tudo (variáveis e adicionais)
   List<ProductVariable> _productVariables = [];
-  List<ProductAddOn> _productAddOns = []; // Novo estado para os adicionais da API
+  List<ProductAddOn> _productAddOns = [];
 
-  // --- Estados da UI ---
+  // Variável para armazenar o Future
+  late Future<void> _detailsFuture;
+
   int _quantity = 1;
   double _currentPrice = 0.0;
   String? _selectedVariableValue;
@@ -27,55 +30,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   final TextEditingController _observationsController = TextEditingController();
   int _currentStep = 0;
 
-  bool get _isStep1Complete => _productVariables.isEmpty || _selectedVariableValue != null;
+  bool get _isStep1Complete =>
+      _productVariables.isEmpty || _selectedVariableValue != null;
 
   @override
   void initState() {
     super.initState();
     _currentPrice = widget.product.price;
-    // Dispara a busca de TODOS os detalhes do produto (variáveis e adicionais)
+    // CRIA O FUTURE APENAS UMA VEZ AQUI
     _detailsFuture = _fetchProductDetails();
-  }
-
-  // Função que chama AMBAS as APIs em paralelo usando Future.wait
-  Future<void> _fetchProductDetails() async {
-    try {
-      // Future.wait executa as chamadas de API ao mesmo tempo. O código só continua
-      // quando AMBAS terminarem. Isso é mais eficiente que chamá-las em sequência.
-      //
-      final results = await Future.wait([
-        ApiService.fetchProductVariables(widget.product.id),
-        ApiService.fetchProductAddOns(widget.product.id),
-      ]);
-
-      // Processa os resultados após ambos terminarem
-      final variables = results[0] as List<ProductVariable>;
-      final addOns = results[1] as List<ProductAddOn>;
-
-      if (mounted) {
-        setState(() {
-          // Guarda os resultados nos estados
-          _productVariables = variables;
-          _productAddOns = addOns;
-
-          // Inicializa o mapa de quantidades de adicionais com os dados da API
-          for (var addon in _productAddOns) {
-            _selectedAddOnQuantities[addon.id] = 0;
-          }
-
-          // Pré-seleciona a primeira variável, se houver
-          if (_productVariables.isNotEmpty && _productVariables.first.options.isNotEmpty) {
-            _selectedVariableValue = _productVariables.first.options.first.id;
-          }
-
-          // Recalcula o preço total com os dados carregados
-          _updateTotal();
-        });
-      }
-    } catch (e) {
-      // Propaga o erro para o FutureBuilder exibi-lo na tela
-      rethrow;
-    }
   }
 
   @override
@@ -84,21 +47,48 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     super.dispose();
   }
 
+  Future<void> _fetchProductDetails() async {
+    final results = await Future.wait([
+      widget.apiService.fetchProductVariables(widget.product.id),
+      widget.apiService.fetchProductAddOns(widget.product.id),
+    ]);
+
+    final variables = results[0] as List<ProductVariable>;
+    final addOns = results[1] as List<ProductAddOn>;
+
+    if (mounted) {
+      setState(() {
+        _productVariables = variables;
+        _productAddOns = addOns;
+
+        for (var addon in _productAddOns) {
+          _selectedAddOnQuantities[addon.id] = 0;
+        }
+
+        if (_productVariables.isNotEmpty &&
+            _productVariables.first.options.isNotEmpty) {
+          _selectedVariableValue = _productVariables.first.options.first.id;
+        }
+
+        _updateTotal();
+      });
+    }
+  }
+
   void _updateTotal() {
     double basePrice = widget.product.price;
 
-    // Lógica das variáveis (usa _productVariables)
     if (_selectedVariableValue != null && _productVariables.isNotEmpty) {
       final selectedOption = _productVariables
           .expand((v) => v.options)
           .firstWhere(
-              (opt) => opt.id == _selectedVariableValue,
-          orElse: () => ProductOption(id: '', name: '', priceAdjustment: 0.0)
+            (opt) => opt.id == _selectedVariableValue,
+        orElse: () =>
+            ProductOption(id: '', name: '', priceAdjustment: 0.0),
       );
       basePrice += selectedOption.priceAdjustment;
     }
 
-    // Lógica dos adicionais agora usa a lista _productAddOns vinda da API
     for (var addon in _productAddOns) {
       final quantity = _selectedAddOnQuantities[addon.id] ?? 0;
       basePrice += addon.price * quantity;
@@ -109,7 +99,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     });
   }
 
-  // O método build agora usa um FutureBuilder único para carregar todos os detalhes
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -118,14 +107,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         elevation: 1,
       ),
       body: FutureBuilder<void>(
+        // USA O FUTURE CRIADO EM initState
         future: _detailsFuture,
         builder: (context, snapshot) {
-          // 1. Enquanto os dados estão carregando, exibe um spinner
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          // 2. Se ocorrer um erro na busca, exibe uma mensagem
           if (snapshot.hasError) {
             return Center(
               child: Padding(
@@ -138,7 +126,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             );
           }
 
-          // 3. Quando os dados chegam com sucesso, constrói a tela principal (Stepper)
           return SingleChildScrollView(
             child: Stepper(
               physics: const ClampingScrollPhysics(),
@@ -154,22 +141,31 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     children: <Widget>[
                       ElevatedButton.icon(
                         onPressed: details.onStepContinue,
-                        icon: Icon(details.currentStep == _buildSteps().length - 1
-                            ? Icons.add_shopping_cart
-                            : Icons.arrow_forward),
-                        label: Text(details.currentStep == _buildSteps().length - 1
-                            ? 'Adicionar'
-                            : 'Continuar'),
+                        icon: Icon(
+                          details.currentStep == _buildSteps().length - 1
+                              ? Icons.add_shopping_cart
+                              : Icons.arrow_forward,
+                        ),
+                        label: Text(
+                          details.currentStep == _buildSteps().length - 1
+                              ? 'Adicionar'
+                              : 'Continuar',
+                        ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Theme.of(context).colorScheme.primary,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 12,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
                       TextButton(
                         onPressed: details.onStepCancel,
-                        child: Text(details.currentStep == 0 ? 'Cancelar' : 'Voltar'),
+                        child: Text(
+                          details.currentStep == 0 ? 'Cancelar' : 'Voltar',
+                        ),
                       ),
                     ],
                   ),
@@ -182,25 +178,36 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  // --- MÉTODOS DE CONSTRUÇÃO DOS PASSOS (STEPS) ---
+  // ... (métodos _buildStep1Content, _buildStep2Content, _buildStep3Content, _buildSteps, _onStepContinue, _onStepCancel, _addOrderToCart permanecem inalterados)
 
   Widget _buildStep1Content() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(widget.product.name, style: Theme.of(context).textTheme.headlineMedium),
+        Text(
+          widget.product.name,
+          style: Theme.of(context).textTheme.headlineMedium,
+        ),
         const SizedBox(height: 8),
-        Text(widget.product.description, style: TextStyle(color: Colors.grey[700], fontSize: 16)),
-
+        Text(
+          widget.product.description,
+          style: TextStyle(color: Colors.grey[700], fontSize: 16),
+        ),
         if (_productVariables.isNotEmpty) ...[
           const Divider(height: 30),
-          Text('1. ${_productVariables.first.name} (Obrigatório)',
-              style: Theme.of(context).textTheme.titleLarge!.copyWith(fontSize: 20)),
+          Text(
+            '1. ${_productVariables.first.name} (Obrigatório)',
+            style: Theme.of(context)
+                .textTheme
+                .titleLarge!
+                .copyWith(fontSize: 20),
+          ),
           const SizedBox(height: 10),
           ..._productVariables.first.options.map((option) {
             return RadioListTile<String>(
               title: Text(
-                  '${option.name} (${option.priceAdjustment >= 0 ? '+' : ''} R\$ ${option.priceAdjustment.toStringAsFixed(2)})'),
+                '${option.name} (${option.priceAdjustment >= 0 ? '+' : ''} R\$ ${option.priceAdjustment.toStringAsFixed(2)})',
+              ),
               value: option.id,
               groupValue: _selectedVariableValue,
               onChanged: (String? value) {
@@ -224,14 +231,21 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (_productAddOns.isNotEmpty) ...[
-          Text('2. Adicionais (Opcional)',
-              style: Theme.of(context).textTheme.titleLarge!.copyWith(fontSize: 20)),
+          Text(
+            '2. Adicionais (Opcional)',
+            style: Theme.of(context)
+                .textTheme
+                .titleLarge!
+                .copyWith(fontSize: 20),
+          ),
           const SizedBox(height: 10),
           ..._productAddOns.map((addon) {
             final quantity = _selectedAddOnQuantities[addon.id] ?? 0;
             return ListTile(
               contentPadding: EdgeInsets.zero,
-              title: Text('${addon.name} (+ R\$ ${addon.price.toStringAsFixed(2)})'),
+              title: Text(
+                '${addon.name} (+ R\$ ${addon.price.toStringAsFixed(2)})',
+              ),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -247,7 +261,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     }
                         : null,
                   ),
-                  Text('$quantity', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(
+                    '$quantity',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   IconButton(
                     icon: const Icon(Icons.add_circle_outline),
                     color: Theme.of(context).colorScheme.primary,
@@ -271,7 +291,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('3. Quantidade do Item', style: Theme.of(context).textTheme.titleLarge!.copyWith(fontSize: 20)),
+        Text(
+          '3. Quantidade do Item',
+          style:
+          Theme.of(context).textTheme.titleLarge!.copyWith(fontSize: 20),
+        ),
         const SizedBox(height: 15),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -283,7 +307,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12.0),
-              child: Text('$_quantity', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              child: Text(
+                '$_quantity',
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
             ),
             IconButton(
               icon: const Icon(Icons.add_circle_outline, size: 30),
@@ -293,7 +320,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           ],
         ),
         const Divider(height: 40),
-        Text('4. Observações (Opcional)', style: Theme.of(context).textTheme.titleLarge!.copyWith(fontSize: 20)),
+        Text(
+          '4. Observações (Opcional)',
+          style:
+          Theme.of(context).textTheme.titleLarge!.copyWith(fontSize: 20),
+        ),
         const SizedBox(height: 15),
         TextFormField(
           controller: _observationsController,
@@ -317,8 +348,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       ],
     );
   }
-
-  // --- MÉTODOS DE CONTROLE DO STEPPER ---
 
   List<Step> _buildSteps() {
     return [
@@ -344,7 +373,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   void _onStepContinue() {
     if (_currentStep == 0 && !_isStep1Complete) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor, selecione uma opção antes de continuar.')),
+        const SnackBar(
+          content: Text('Por favor, selecione uma opção antes de continuar.'),
+        ),
       );
       return;
     }

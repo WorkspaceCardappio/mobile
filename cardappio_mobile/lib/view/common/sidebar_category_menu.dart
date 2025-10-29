@@ -1,14 +1,10 @@
 import 'package:flutter/material.dart';
-// Mantenha suas importações de mock_data e product aqui
-import 'package:cardappio_mobile/data/mock_data.dart';
-
 import '../../model/category.dart';
-
 
 class SidebarCategoryMenu extends StatelessWidget {
   final bool isExpanded;
   final String selectedCategoryName;
-  final Function(String categoryName) onCategoryTap;
+  final ValueChanged<String> onCategoryTap;
   final List<Category> categories;
 
   const SidebarCategoryMenu({
@@ -19,116 +15,110 @@ class SidebarCategoryMenu extends StatelessWidget {
     required this.categories,
   });
 
-  IconData _getCategoryIcon(String categoryName) {
-    switch (categoryName.toLowerCase()) {
-      case 'destaques do chef':
-        return Icons.star;
-      case 'pratos principais':
-        return Icons.dinner_dining;
-      case 'lanches e burgers':
-      case 'hambúrgueres':
-        return Icons.lunch_dining;
-      case 'porções e petiscos':
-        return Icons.tapas;
-      case 'bebidas':
-        return Icons.local_bar;
-      case 'sobremesas':
-        return Icons.cake;
-      default:
-        return Icons.category;
-    }
+
+  static const Map<String, IconData> _categoryIcons = {
+    'destaques do chef': Icons.star,
+    'pratos principais': Icons.dinner_dining,
+    'lanches e burgers': Icons.lunch_dining,
+    'hambúrgueres': Icons.lunch_dining,
+    'porções e petiscos': Icons.tapas,
+    'bebidas': Icons.local_bar,
+    'sobremesas': Icons.cake,
+  };
+
+  IconData _getIconForCategory(String categoryName) {
+    return _categoryIcons[categoryName.toLowerCase()] ?? Icons.category;
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
 
-    if (categories.isEmpty && isExpanded) {
-      return Container(
-        padding: const EdgeInsets.all(16.0),
-        child: const Center(child: CircularProgressIndicator(strokeWidth: 2.0)),
+    if (!isExpanded) {
+      return const SizedBox.shrink();
+    }
+
+
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      alignment: Alignment.topCenter,
+      child: _buildMenuContent(context),
+    );
+  }
+
+  Widget _buildMenuContent(BuildContext context) {
+
+
+    if (categories.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2.0)),
       );
     }
 
-    // NOVO: Cor de fundo para o menu inteiro.
-    // Usamos Color.alphaBlend para misturar a cor do texto (onSurface) com 5% de opacidade
-    // sobre a cor de fundo padrão (surface). Isso cria um tom sutilmente mais claro.
-    final Color menuBackgroundColor = Color.alphaBlend(
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    final menuBackgroundColor = Color.alphaBlend(
       colorScheme.onSurface.withOpacity(0.05),
       colorScheme.surface,
     );
 
-    // ALTERADO: A cor do item selecionado agora é uma mistura da cor primária
-    // sobre o novo fundo do menu, para um contraste mais harmonioso.
-    final Color selectedItemBackgroundColor = Color.alphaBlend(
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      decoration: BoxDecoration(
+        color: menuBackgroundColor,
+        borderRadius: BorderRadius.circular(12.0),
+      ),
+      child: Column(
+
+        children: categories
+            .map((category) => _buildCategoryItem(context, category, menuBackgroundColor))
+            .toList(),
+      ),
+    );
+  }
+
+
+
+  Widget _buildCategoryItem(BuildContext context, Category category, Color menuBackgroundColor) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isSelected = category.name == selectedCategoryName;
+
+    final selectedItemColor = Color.alphaBlend(
       colorScheme.primary.withOpacity(0.12),
       menuBackgroundColor,
     );
 
-    final Color unselectedItemColor = colorScheme.onSurface;
-
-    return AnimatedSize(
-      duration: Duration(milliseconds: isExpanded ? 300 : 0),
-      curve: Curves.easeInOut,
-      alignment: Alignment.topCenter,
-      child: isExpanded
-      // NOVO: Container principal que define o fundo de todo o menu.
-          ? Container(
-        margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-        padding: const EdgeInsets.symmetric(vertical: 8.0), // Espaçamento interno
-        decoration: BoxDecoration(
-          color: menuBackgroundColor, // Aplicando a nova cor de fundo
-          borderRadius: BorderRadius.circular(12.0), // Bordas arredondadas para o menu
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 1.0),
+      decoration: BoxDecoration(
+        color: isSelected ? selectedItemColor : Colors.transparent,
+        borderRadius: BorderRadius.circular(8.0),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 2.0),
+        leading: Icon(
+          _getIconForCategory(category.name),
+          color: isSelected ? colorScheme.primary : colorScheme.onSurface.withOpacity(0.7),
+          size: 18,
         ),
-        child: Column(
-          children: [
-            AnimatedOpacity(
-              opacity: isExpanded ? 1.0 : 0.0,
-              duration: const Duration(milliseconds: 200),
-              child: Column(
-                children: categories.map((category) {
-                  final isSelected = category.name == selectedCategoryName;
-
-                  return Container(
-                    // ALTERADO: Ajustado o margin para se adequar ao novo container pai
-                    margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 1.0),
-                    decoration: BoxDecoration(
-                      // ALTERADO: Usando a nova cor para o item selecionado
-                      color: isSelected
-                          ? selectedItemBackgroundColor
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8.0),
-                    ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 2.0),
-                      leading: Icon(
-                        _getCategoryIcon(category.name),
-                        color: isSelected
-                            ? colorScheme.primary
-                            : unselectedItemColor.withOpacity(0.7),
-                        size: 18,
-                      ),
-                      title: Text(
-                        category.name,
-                        style: TextStyle(
-                          color: isSelected
-                              ? colorScheme.primary
-                              : unselectedItemColor,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                          fontSize: 14,
-                        ),
-                      ),
-                      onTap: () => onCategoryTap(category.name),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-          ],
+        title: Text(
+          category.name,
+          style: TextStyle(
+            color: isSelected ? colorScheme.primary : colorScheme.onSurface,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            fontSize: 14,
+          ),
+          overflow: TextOverflow.ellipsis,
         ),
-      )
-          : const SizedBox.shrink(),
+        onTap: () => onCategoryTap(category.name),
+
+        splashColor: selectedItemColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+      ),
     );
   }
 }
