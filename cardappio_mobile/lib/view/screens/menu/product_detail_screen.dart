@@ -350,24 +350,43 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   List<Step> _buildSteps() {
-    return [
-      Step(
-        title: const Text('Opções'),
-        content: _buildStep1Content(),
-        isActive: _currentStep == 0,
-        state: _isStep1Complete ? StepState.complete : StepState.error,
-      ),
-      Step(
-        title: const Text('Adicionais'),
-        content: _buildStep2Content(),
-        isActive: _currentStep == 1,
-      ),
+
+    final List<Step> steps = [];
+
+    int stepIndex = 0;
+
+    if (_productVariables.isNotEmpty) {
+      steps.add(
+        Step(
+          title: const Text('Opções'),
+          content: _buildStep1Content(),
+          isActive: _currentStep == stepIndex,
+          state: _isStep1Complete ? StepState.complete : StepState.error,
+        ),
+      );
+      stepIndex++;
+    }
+
+    if (_productAddOns.isNotEmpty) {
+      steps.add(
+        Step(
+          title: const Text('Adicionais'),
+          content: _buildStep2Content(),
+          isActive: _currentStep == stepIndex,
+        ),
+      );
+      stepIndex++;
+    }
+
+    steps.add(
       Step(
         title: const Text('Finalizar Item'),
         content: _buildStep3Content(),
-        isActive: _currentStep == 2,
+        isActive: _currentStep == stepIndex,
       ),
-    ];
+    );
+
+    return steps;
   }
 
   void _onStepContinue() {
