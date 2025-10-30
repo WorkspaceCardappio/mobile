@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:carousel_slider/carousel_slider.dart' as caro;
 
 import '../../../data/api_service.dart';
 import '../../../model/menu.dart';
@@ -11,11 +12,26 @@ class MenuItem {
   MenuItem({required this.name, required this.imageUrl, required this.price});
 }
 
-final MenuItem promoItem = MenuItem(
-  name: 'Bife Grelhado com Tomate Cereja',
-  imageUrl: 'lib/images/prato.jpeg',
-  price: 'R\$ 54,99', 
-);
+final List<MenuItem> promoItemsList = [
+  MenuItem(
+      name: 'Bife Grelhado com Tomate Cereja',
+      imageUrl: 'lib/images/prato.jpeg',
+      price: 'R\$ 54,99'),
+  MenuItem(
+      name: 'Camarão Crocante ao Molho',
+      imageUrl: 'lib/images/camarao.jpeg',
+      price: 'R\$ 68,50'),
+  MenuItem(
+      name: 'Macarrão com Frutos do Mar',
+      imageUrl: 'lib/images/macarrao.jpeg',
+      price: 'R\$ 59,90'),
+  MenuItem(
+      name: 'Prato Feito Executivo',
+      imageUrl: 'lib/images/pf.jpeg',
+      price: 'R\$ 38,90'),
+];
+
+final MenuItem promoItem = promoItemsList[0];
 
 final List<MenuItem> houseRecommendations = [
   MenuItem(
@@ -32,13 +48,6 @@ final List<MenuItem> houseRecommendations = [
       price: 'R\$ 47,99'),
 ];
 
-List<String> promoImages = [
-  'lib/images/prato.jpeg',
-  'lib/images/camarao.jpeg',
-  'lib/images/macarrao.jpeg',
-  'lib/images/pf.jpeg', 
-];
-
 class HomeScreen extends StatefulWidget {
   final Function(Menu menu) onQuickOrder;
 
@@ -49,21 +58,16 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late PageController _pageController;
   int _activePage = 0;
+  final caro.CarouselSliderController _carouselController = caro.CarouselSliderController(); 
 
-  @override
+ @override
   void initState() {
     super.initState();
-    _pageController = PageController(
-      viewportFraction: 0.8, 
-      initialPage: 1,
-    );
   }
 
   @override
   void dispose() {
-    _pageController.dispose();
     super.dispose();
   }
 
@@ -109,22 +113,19 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Widget _buildPromotionalCarouselItem(BuildContext context, String imagePath, int index) {
+  Widget _buildPromotionalCarouselItem(BuildContext context, MenuItem item, int index) {
 
-    final item = promoItem;
     bool active = index == _activePage;
     double marginVertical = active ? 10 : 20;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 500),
-      curve: Curves.easeInOutCubic,
-      margin: EdgeInsets.symmetric(horizontal: 5.0, vertical: marginVertical), 
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 5, vertical: marginVertical), 
       child: Stack(
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: Image.asset(
-              imagePath, 
+              item.imageUrl, 
               width: double.infinity,
               height: double.infinity,
               fit: BoxFit.cover,
@@ -140,6 +141,25 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
+          Positioned.fill(
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withOpacity(0.0), // Transparente no topo
+                  Colors.black.withOpacity(0.2), 
+                  Colors.black.withOpacity(0.5), // Mais escuro na base
+                  Colors.black.withOpacity(0.7), 
+                ],
+                stops: const [0.0, 0.5, 0.8, 1.0],
+              ),
+            ),
+          ),
+        ),
+
             Positioned(
               top: 16,
               left: 16,
@@ -150,8 +170,24 @@ class _HomeScreenState extends State<HomeScreen> {
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
                   shadows: [
-                  Shadow(offset: Offset(1, 1), blurRadius: 3.0, color: Colors.black54)
+                  Shadow(offset: Offset(2, 2), blurRadius: 4.0, color: Colors.black)
                 ]
+                ),
+              ),
+            ),
+
+             Positioned(
+              bottom: 10, 
+              left: 16, 
+              child: Text(
+                item.price,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  shadows: [
+                    Shadow(offset: Offset(1, 1), blurRadius: 3.0, color: Colors.black54)
+                  ]
                 ),
               ),
             ),
@@ -172,13 +208,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: const Text('Adicionar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ),
             ),
+
+           
           ],
         ),
       );
   }
 
-  List<Widget> _buildPageIndicators() {
-    return List<Widget>.generate(promoImages.length, (index) {
+List<Widget> _buildPageIndicators() {
+    return List<Widget>.generate(promoItemsList.length, (index) {
       return Container(
         margin: const EdgeInsets.symmetric(horizontal: 4.0),
         width: _activePage == index ? 10.0 : 8.0,
@@ -267,7 +305,7 @@ class _HomeScreenState extends State<HomeScreen> {
     const double horizontalPadding = 50.0; 
     const double itemSpacing = 20.0;    
     const int itemsInView = 3;         
-    final double carouselWidth = MediaQuery.of(context).size.width * 0.5;
+    final double screenWidth = MediaQuery.of(context).size.width;
     
     return Column(
       children: [
@@ -276,21 +314,34 @@ class _HomeScreenState extends State<HomeScreen> {
         //carrossel
          SizedBox(
             height: MediaQuery.of(context).size.height * 0.55, 
-            width: carouselWidth,
+            width: screenWidth,
           child: Column(
             children: [
               Expanded(
-                    child: PageView.builder(
-                      controller: _pageController,
-                      itemCount: promoImages.length,
-                     
-                      onPageChanged: (int page) {
-                        setState(() {
-                          _activePage = page;
-                        });
-                      },
-                      itemBuilder: (context, index) {
-                        return _buildPromotionalCarouselItem(context, promoImages[index], index);
+                    child: caro.CarouselSlider.builder(
+                      carouselController: _carouselController,
+                      itemCount: promoItemsList.length,
+                      options: caro.CarouselOptions(
+                        height: double.infinity,
+                        viewportFraction: 0.7,
+                        initialPage: 0,
+                        enableInfiniteScroll: true,
+                        enlargeCenterPage: true,
+
+                        autoPlay: true,
+                        autoPlayInterval: const Duration(seconds: 3),
+                        autoPlayAnimationDuration: const Duration(milliseconds: 800),
+                      
+                        onPageChanged: (index, reason) {
+                          setState(() {
+                            _activePage = index;
+                          });
+                        },
+                        enlargeFactor: 0.3,
+                      ),
+                      itemBuilder: (context, index, realIndex) {
+                        final item = promoItemsList[index];
+                        return _buildPromotionalCarouselItem(context, item, index);
                       },
                   ),
                   ),
