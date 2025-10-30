@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../../../model/cart_item.dart';
 
 class CartScreen extends StatelessWidget {
@@ -51,12 +50,17 @@ class CartScreen extends StatelessWidget {
                     child: Text('${item.quantity}x', style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
                   ),
                   title: Text(item.product.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 17)),
-                  subtitle: Text('Preço Unitário: R\$ ${item.product.price.toStringAsFixed(2)}'),
+
+
+                  subtitle: Text('Unitário: R\$ ${(item.lineTotal / item.quantity).toStringAsFixed(2)}'),
+
                   trailing: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text('R\$ ${item.subtotal.toStringAsFixed(2)}', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Theme.of(context).colorScheme.secondary)),
+
+                      Text('R\$ ${item.lineTotal.toStringAsFixed(2)}', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Theme.of(context).colorScheme.secondary)),
+                      const SizedBox(height: 4), // Pequeno espaço para melhor alinhamento
                       IconButton(
                         icon: const Icon(Icons.delete_outline, color: Colors.red, size: 24),
                         onPressed: () => onRemoveItem(item.product.id),

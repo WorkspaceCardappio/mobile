@@ -1,74 +1,95 @@
 import 'package:flutter/material.dart';
-
-// Mantenha suas importações de mock_data e models aqui
-import '../../../data/mock_data.dart';
+import '../../../data/api_service.dart';
 import '../../../model/product.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final Product product;
+  final ApiService apiService;
 
-  const ProductDetailScreen({super.key, required this.product});
+  const ProductDetailScreen({
+    super.key,
+    required this.product,
+    required this.apiService,
+  });
 
   @override
   State<ProductDetailScreen> createState() => _ProductDetailScreenState();
 }
 
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
+  List<ProductVariable> _productVariables = [];
+  List<ProductAddOn> _productAddOns = [];
+
+  // Variável para armazenar o Future
+  late Future<void> _detailsFuture;
+
   int _quantity = 1;
   double _currentPrice = 0.0;
   String? _selectedVariableValue;
-
-  // 1. MUDANÇA NO ESTADO: Agora armazena a quantidade (int) de cada adicional.
   final Map<String, int> _selectedAddOnQuantities = {};
-
-  // 2. NOVO ESTADO: Controller para o campo de texto das observações.
   final TextEditingController _observationsController = TextEditingController();
-
   int _currentStep = 0;
 
-  bool get _isStep1Complete => mockVariables.isEmpty || _selectedVariableValue != null;
+  bool get _isStep1Complete =>
+      _productVariables.isEmpty || _selectedVariableValue != null;
 
   @override
   void initState() {
     super.initState();
     _currentPrice = widget.product.price;
-
-    // Inicializa o mapa de quantidades de adicionais com 0.
-    for (var addon in mockAddOns) {
-      _selectedAddOnQuantities[addon.id] = 0;
-    }
-
-    // Inicialização da Variável (se houver)
-    if (mockVariables.isNotEmpty && mockVariables.first.options.isNotEmpty) {
-      _selectedVariableValue = mockVariables.first.options.first.id;
-    }
-
-    _updateTotal(); // Calcula o preço inicial
+    // CRIA O FUTURE APENAS UMA VEZ AQUI
+    _detailsFuture = _fetchProductDetails();
   }
 
-  // 3. NOVO MÉTODO: Lembre-se de fazer o dispose do controller.
   @override
   void dispose() {
     _observationsController.dispose();
     super.dispose();
   }
 
-  // 4. MUDANÇA NA LÓGICA: Atualiza o total considerando a quantidade de cada adicional.
+  Future<void> _fetchProductDetails() async {
+    final results = await Future.wait([
+      widget.apiService.fetchProductVariables(widget.product.id),
+      widget.apiService.fetchProductAddOns(widget.product.id),
+    ]);
+
+    final variables = results[0] as List<ProductVariable>;
+    final addOns = results[1] as List<ProductAddOn>;
+
+    if (mounted) {
+      setState(() {
+        _productVariables = variables;
+        _productAddOns = addOns;
+
+        for (var addon in _productAddOns) {
+          _selectedAddOnQuantities[addon.id] = 0;
+        }
+
+        if (_productVariables.isNotEmpty &&
+            _productVariables.first.options.isNotEmpty) {
+          _selectedVariableValue = _productVariables.first.options.first.id;
+        }
+
+        _updateTotal();
+      });
+    }
+  }
+
   void _updateTotal() {
     double basePrice = widget.product.price;
 
-    // Adiciona o ajuste de preço da variável obrigatória
-    if (_selectedVariableValue != null) {
-      final selectedOption = mockVariables
+    if (_selectedVariableValue != null && _productVariables.isNotEmpty) {
+      final selectedOption = _productVariables
           .expand((v) => v.options)
-          .firstWhere((opt) => opt.id == _selectedVariableValue,
-          orElse: () =>
-              ProductOption(id: '', name: '', priceAdjustment: 0.0));
+          .firstWhere(
+            (opt) => opt.id == _selectedVariableValue,
+        orElse: () =>
+            ProductOption(id: '', name: '', priceAdjustment: 0.0),
+      );
       basePrice += selectedOption.priceAdjustment;
     }
 
-    // Adiciona o preço dos adicionais (preço * quantidade)
-    for (var addon in mockAddOns) {
+    for (var addon in _productAddOns) {
       final quantity = _selectedAddOnQuantities[addon.id] ?? 0;
       basePrice += addon.price * quantity;
     }
@@ -78,25 +99,115 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     });
   }
 
-  // PASSO 1: Sem alterações
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.product.name),
+        elevation: 1,
+      ),
+      body: FutureBuilder<void>(
+        // USA O FUTURE CRIADO EM initState
+        future: _detailsFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  'Não foi possível carregar os detalhes do produto.\n${snapshot.error}',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            );
+          }
+
+          return SingleChildScrollView(
+            child: Stepper(
+              physics: const ClampingScrollPhysics(),
+              type: StepperType.vertical,
+              currentStep: _currentStep,
+              onStepContinue: _onStepContinue,
+              onStepCancel: _onStepCancel,
+              steps: _buildSteps(),
+              controlsBuilder: (context, details) {
+                return Padding(
+                  padding: const EdgeInsets.only(top: 20.0),
+                  child: Row(
+                    children: <Widget>[
+                      ElevatedButton.icon(
+                        onPressed: details.onStepContinue,
+                        icon: Icon(
+                          details.currentStep == _buildSteps().length - 1
+                              ? Icons.add_shopping_cart
+                              : Icons.arrow_forward,
+                        ),
+                        label: Text(
+                          details.currentStep == _buildSteps().length - 1
+                              ? 'Adicionar'
+                              : 'Continuar',
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      TextButton(
+                        onPressed: details.onStepCancel,
+                        child: Text(
+                          details.currentStep == 0 ? 'Cancelar' : 'Voltar',
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // ... (métodos _buildStep1Content, _buildStep2Content, _buildStep3Content, _buildSteps, _onStepContinue, _onStepCancel, _addOrderToCart permanecem inalterados)
+
   Widget _buildStep1Content() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(widget.product.name,
-            style: Theme.of(context).textTheme.headlineMedium),
+        Text(
+          widget.product.name,
+          style: Theme.of(context).textTheme.headlineMedium,
+        ),
         const SizedBox(height: 8),
-        Text(widget.product.description,
-            style: TextStyle(color: Colors.grey[700], fontSize: 16)),
-        if (mockVariables.isNotEmpty) ...[
+        Text(
+          widget.product.description,
+          style: TextStyle(color: Colors.grey[700], fontSize: 16),
+        ),
+        if (_productVariables.isNotEmpty) ...[
           const Divider(height: 30),
-          Text('1. Opções (Obrigatório)',
-              style: Theme.of(context).textTheme.titleLarge!.copyWith(fontSize: 20)),
+          Text(
+            '1. ${_productVariables.first.name} (Obrigatório)',
+            style: Theme.of(context)
+                .textTheme
+                .titleLarge!
+                .copyWith(fontSize: 20),
+          ),
           const SizedBox(height: 10),
-          ...mockVariables.first.options.map((option) {
+          ..._productVariables.first.options.map((option) {
             return RadioListTile<String>(
               title: Text(
-                  '${option.name} (${option.priceAdjustment >= 0 ? '+' : ''} R\$ ${option.priceAdjustment.toStringAsFixed(2)})'),
+                '${option.name} (${option.priceAdjustment >= 0 ? '+' : ''} R\$ ${option.priceAdjustment.toStringAsFixed(2)})',
+              ),
               value: option.id,
               groupValue: _selectedVariableValue,
               onChanged: (String? value) {
@@ -115,21 +226,26 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  // 5. MUDANÇA NA UI: Interface de adicionais e quantidade.
   Widget _buildStep2Content() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (mockAddOns.isNotEmpty) ...[
-          Text('2. Adicionais (Opcional)',
-              style: Theme.of(context).textTheme.titleLarge!.copyWith(fontSize: 20)),
+        if (_productAddOns.isNotEmpty) ...[
+          Text(
+            '2. Adicionais (Opcional)',
+            style: Theme.of(context)
+                .textTheme
+                .titleLarge!
+                .copyWith(fontSize: 20),
+          ),
           const SizedBox(height: 10),
-          // Mapeia os adicionais para uma lista de ListTile com controles de quantidade
-          ...mockAddOns.map((addon) {
+          ..._productAddOns.map((addon) {
             final quantity = _selectedAddOnQuantities[addon.id] ?? 0;
             return ListTile(
               contentPadding: EdgeInsets.zero,
-              title: Text('${addon.name} (+ R\$ ${addon.price.toStringAsFixed(2)})'),
+              title: Text(
+                '${addon.name} (+ R\$ ${addon.price.toStringAsFixed(2)})',
+              ),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -145,7 +261,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     }
                         : null,
                   ),
-                  Text('$quantity', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(
+                    '$quantity',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   IconButton(
                     icon: const Icon(Icons.add_circle_outline),
                     color: Theme.of(context).colorScheme.primary,
@@ -165,13 +287,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  // 6. NOVO WIDGET: Interface para as observações e quantidade do item principal.
   Widget _buildStep3Content() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Seção de Quantidade do Item Principal
-        Text('3. Quantidade do Item', style: Theme.of(context).textTheme.titleLarge!.copyWith(fontSize: 20)),
+        Text(
+          '3. Quantidade do Item',
+          style:
+          Theme.of(context).textTheme.titleLarge!.copyWith(fontSize: 20),
+        ),
         const SizedBox(height: 15),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -183,7 +307,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12.0),
-              child: Text('$_quantity', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              child: Text(
+                '$_quantity',
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
             ),
             IconButton(
               icon: const Icon(Icons.add_circle_outline, size: 30),
@@ -193,9 +320,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           ],
         ),
         const Divider(height: 40),
-
-        // Seção de Observações
-        Text('4. Observações (Opcional)', style: Theme.of(context).textTheme.titleLarge!.copyWith(fontSize: 20)),
+        Text(
+          '4. Observações (Opcional)',
+          style:
+          Theme.of(context).textTheme.titleLarge!.copyWith(fontSize: 20),
+        ),
         const SizedBox(height: 15),
         TextFormField(
           controller: _observationsController,
@@ -206,8 +335,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           maxLines: 3,
         ),
         const SizedBox(height: 20),
-
-        // Display do preço total final
         Align(
           alignment: Alignment.centerRight,
           child: Text(
@@ -222,7 +349,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  // 7. MUDANÇA NO STEPPER: Adiciona o terceiro passo.
   List<Step> _buildSteps() {
     return [
       Step(
@@ -244,11 +370,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     ];
   }
 
-  // 8. MUDANÇA NA LÓGICA: Ajusta a navegação para 3 passos.
   void _onStepContinue() {
     if (_currentStep == 0 && !_isStep1Complete) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor, selecione uma opção antes de continuar.')),
+        const SnackBar(
+          content: Text('Por favor, selecione uma opção antes de continuar.'),
+        ),
       );
       return;
     }
@@ -268,9 +395,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     }
   }
 
-  // 9. MUDANÇA NO RETORNO: Envia os novos dados para o carrinho.
   void _addOrderToCart() {
-    // Filtra apenas os adicionais com quantidade > 0
     final Map<String, int> finalAddons = Map.from(_selectedAddOnQuantities)
       ..removeWhere((key, value) => value == 0);
 
@@ -279,58 +404,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       'quantity': _quantity,
       'total_item': (_currentPrice * _quantity),
       'variable': _selectedVariableValue,
-      'addons': finalAddons, // Envia o mapa de IDs e quantidades
-      'observations': _observationsController.text.trim(), // Envia as observações
+      'addons': finalAddons,
+      'observations': _observationsController.text.trim(),
     });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.product.name),
-        elevation: 1,
-      ),
-      // Usar um SingleChildScrollView para evitar overflow em telas menores
-      body: SingleChildScrollView(
-        child: Stepper(
-          // physics: ClampingScrollPhysics() ajuda o scroll do Stepper
-          physics: const ClampingScrollPhysics(),
-          type: StepperType.vertical,
-          currentStep: _currentStep,
-          onStepContinue: _onStepContinue,
-          onStepCancel: _onStepCancel,
-          steps: _buildSteps(),
-          controlsBuilder: (context, details) {
-            return Padding(
-              padding: const EdgeInsets.only(top: 20.0),
-              child: Row(
-                children: <Widget>[
-                  ElevatedButton.icon(
-                    onPressed: details.onStepContinue,
-                    icon: Icon(details.currentStep == _buildSteps().length - 1
-                        ? Icons.add_shopping_cart
-                        : Icons.arrow_forward),
-                    label: Text(details.currentStep == _buildSteps().length - 1
-                        ? 'Adicionar'
-                        : 'Continuar'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  TextButton(
-                    onPressed: details.onStepCancel,
-                    child: Text(details.currentStep == 0 ? 'Cancelar' : 'Voltar'),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-      ),
-    );
   }
 }
