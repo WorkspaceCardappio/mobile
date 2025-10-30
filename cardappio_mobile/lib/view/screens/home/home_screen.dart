@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart' as caro;
-
 import '../../../data/api_service.dart';
 import '../../../model/menu.dart';
 
@@ -50,8 +49,13 @@ final List<MenuItem> houseRecommendations = [
 
 class HomeScreen extends StatefulWidget {
   final Function(Menu menu) onQuickOrder;
+  final ApiService apiService;
 
-  const HomeScreen({super.key, required this.onQuickOrder});
+  const HomeScreen({
+    super.key,
+    required this.onQuickOrder,
+    required this.apiService,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -59,7 +63,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _activePage = 0;
-  final caro.CarouselSliderController _carouselController = caro.CarouselSliderController(); 
+  final caro.CarouselSliderController _carouselController = caro.CarouselSliderController();
 
  @override
   void initState() {
@@ -81,8 +85,7 @@ class _HomeScreenState extends State<HomeScreen> {
     Overlay.of(context).insert(overlay);
 
     try {
-      final List<Menu> menus = await ApiService.fetchMenus();
-
+      final List<Menu> menus = await widget.apiService.fetchMenus();
       final Menu? activeMenu = menus.isNotEmpty
           ? menus.firstWhere((m) => m.active, orElse: () => menus.first)
           : null;
@@ -90,26 +93,21 @@ class _HomeScreenState extends State<HomeScreen> {
       if (activeMenu != null) {
         widget.onQuickOrder(activeMenu);
       } else {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Nenhum cardápio disponível para iniciar o pedido.'),
-              duration: Duration(seconds: 3),
-            ),
-          );
-        }
+        _showErrorSnackBar('Nenhum cardápio disponível para iniciar o pedido.');
       }
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro ao buscar Cardápio: ${e.toString().split(':').last.trim()}'),
-            duration: const Duration(seconds: 4),
-          ),
-        );
-      }
+      final errorMessage = e.toString().split(':').last.trim();
+      _showErrorSnackBar('Erro ao buscar Cardápio: $errorMessage');
     } finally {
       overlay.remove();
+      }
+  }
+
+  void _showErrorSnackBar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
     }
   }
 
@@ -119,13 +117,13 @@ class _HomeScreenState extends State<HomeScreen> {
     double marginVertical = active ? 10 : 20;
 
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 5, vertical: marginVertical), 
+      margin: EdgeInsets.symmetric(horizontal: 5, vertical: marginVertical),
       child: Stack(
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: Image.asset(
-              item.imageUrl, 
+              item.imageUrl,
               width: double.infinity,
               height: double.infinity,
               fit: BoxFit.cover,
@@ -149,10 +147,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Colors.black.withOpacity(0.0), // Transparente no topo
-                  Colors.black.withOpacity(0.2), 
-                  Colors.black.withOpacity(0.5), // Mais escuro na base
-                  Colors.black.withOpacity(0.7), 
+                  Colors.black.withOpacity(0.0),
+                  Colors.black.withOpacity(0.2),
+                  Colors.black.withOpacity(0.5),
+                  Colors.black.withOpacity(0.7),
                 ],
                 stops: const [0.0, 0.5, 0.8, 1.0],
               ),
@@ -177,8 +175,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
 
              Positioned(
-              bottom: 10, 
-              left: 16, 
+              bottom: 10,
+              left: 16,
               child: Text(
                 item.price,
                 style: const TextStyle(
@@ -209,7 +207,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-           
+
           ],
         ),
       );
@@ -229,14 +227,14 @@ List<Widget> _buildPageIndicators() {
   }
 
   Widget _buildRecommendationCard(BuildContext context, MenuItem item, Function onTap, double itemWidth) {
-    const double cardSpacing = 20.0; 
+    const double cardSpacing = 20.0;
 
     return Padding(
-      padding: const EdgeInsets.only(right: cardSpacing), 
+      padding: const EdgeInsets.only(right: cardSpacing),
       child: Container(
-        width: itemWidth, 
+        width: itemWidth,
         decoration: BoxDecoration(
-          color: Colors.white, 
+          color: Colors.white,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
@@ -249,12 +247,12 @@ List<Widget> _buildPageIndicators() {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            
+
             Expanded(
               child: ClipRRect(
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                 child: Image.asset(
-                  item.imageUrl, 
+                  item.imageUrl,
                   width: double.infinity,
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) => Container(
@@ -264,28 +262,28 @@ List<Widget> _buildPageIndicators() {
                 ),
               ),
             ),
-            
+
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded( 
+                  Expanded(
                     child: Text(
                       item.name,
                       style: const TextStyle(
                         color: Colors.black,
                         fontSize: 18,
                         fontWeight: FontWeight.w500,
-                      ), 
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  Text( 
+                  Text(
                     item.price,
                     style: const TextStyle(
-                      color: Color(0xFF51CF66), 
+                      color: Color(0xFF51CF66),
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
                     ),
@@ -299,21 +297,21 @@ List<Widget> _buildPageIndicators() {
     );
   }
 
-  
+
 @override
-  Widget build(BuildContext context) { 
-    const double horizontalPadding = 50.0; 
-    const double itemSpacing = 20.0;    
-    const int itemsInView = 3;         
+  Widget build(BuildContext context) {
+    const double horizontalPadding = 50.0;
+    const double itemSpacing = 20.0;
+    const int itemsInView = 3;
     final double screenWidth = MediaQuery.of(context).size.width;
-    
+
     return Column(
       children: [
         const SizedBox(height: 10),
 
-        //carrossel
+
          SizedBox(
-            height: MediaQuery.of(context).size.height * 0.55, 
+            height: MediaQuery.of(context).size.height * 0.55,
             width: screenWidth,
           child: Column(
             children: [
@@ -329,9 +327,9 @@ List<Widget> _buildPageIndicators() {
                         enlargeCenterPage: true,
 
                         autoPlay: true,
-                        autoPlayInterval: const Duration(seconds: 3),
+                        autoPlayInterval: const Duration(seconds: 2),
                         autoPlayAnimationDuration: const Duration(milliseconds: 800),
-                      
+
                         onPageChanged: (index, reason) {
                           setState(() {
                             _activePage = index;
@@ -356,10 +354,10 @@ List<Widget> _buildPageIndicators() {
               ],
             ),
          ),
-              
+
               const SizedBox(height: 10),
 
-        //recomendações da casa     
+
         Expanded(
           child: Container(
             color: const Color(0xFF7c7973),
@@ -378,30 +376,30 @@ List<Widget> _buildPageIndicators() {
                     ),
                   ),
                 ),
-            
+
                 SizedBox(
                   height: MediaQuery.of(context).size.height * 0.31,
                   width: MediaQuery.of(context).size.width,
                   child: LayoutBuilder(
                     builder: (context, constraints) {
-                      final availableWidth = constraints.maxWidth - (horizontalPadding * 2); 
-                      
-                      final totalSpacing = itemSpacing * (itemsInView - 1); 
-                      
+                      final availableWidth = constraints.maxWidth - (horizontalPadding * 2);
+
+                      final totalSpacing = itemSpacing * (itemsInView - 1);
+
                       final itemWidth = (availableWidth - totalSpacing) / itemsInView;
-                      
+
                       return ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: horizontalPadding),
                         scrollDirection: Axis.horizontal,
                         itemCount: houseRecommendations.length,
                         itemBuilder: (context, index) {
                           final item = houseRecommendations[index];
-                          
+
                           return _buildRecommendationCard(
-                            context, 
-                            item, 
+                            context,
+                            item,
                             () => print('Item ${item.name} clicado'),
-                            itemWidth 
+                            itemWidth
                           );
                         },
                       );

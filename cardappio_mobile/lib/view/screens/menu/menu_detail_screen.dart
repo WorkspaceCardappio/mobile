@@ -1,26 +1,86 @@
-// lib/presentation/screens/menu/menu_detail_screen.dart
-
 import 'package:flutter/material.dart';
-import 'package:cardappio_mobile/model/menu.dart'; // Importe conforme sua estrutura
-import 'package:cardappio_mobile/model/product.dart'; // Importe conforme sua estrutura
-import 'package:cardappio_mobile/data/mock_data.dart'; // Importe conforme sua estrutura
+import 'package:cardappio_mobile/model/menu.dart';
+import 'package:cardappio_mobile/model/product.dart';
+import '../../../data/api_service.dart';
 
 class MenuDetailScreen extends StatelessWidget {
   final Menu menu;
-  // PARÂMETRO CORRIGIDO: Adicione 'selectedCategoryName' ao construtor
   final String selectedCategoryName;
+  final String selectedCategoryId;
   final Function(Product product) onProductTap;
+  final ApiService apiService;
+
 
   const MenuDetailScreen({
     super.key,
     required this.menu,
-    required this.selectedCategoryName, // Torne-o um parâmetro obrigatório
+    required this.selectedCategoryName,
+    required this.selectedCategoryId,
     required this.onProductTap,
+    required this.apiService,
   });
 
-  // ... (o método _buildProductCard permanece o mesmo)
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(20.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            selectedCategoryName,
+            style: Theme.of(context).textTheme.headlineLarge!.copyWith(
+              color: Theme.of(context).colorScheme.secondary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const Divider(height: 20, thickness: 1),
+          Expanded(
+            child: FutureBuilder<List<Product>>(
+              future: apiService.fetchProductsByCategory(selectedCategoryId),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      'Ocorreu um erro ao buscar os produtos.\n${snapshot.error}',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.red[700]),
+                    ),
+                  );
+                }
+
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return Center(
+                    child: Text(
+                      'Nenhum produto encontrado nesta categoria.',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 18),
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  itemCount: snapshot.data!.length,
+                  itemBuilder: (context, index) {
+                    final product = snapshot.data![index];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12.0),
+                      child: _buildProductCard(product, context),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildProductCard(Product product, BuildContext context) {
-    // ... (implementação do Card)
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -38,7 +98,10 @@ class MenuDetailScreen extends StatelessWidget {
                   color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(Icons.restaurant_menu, color: Theme.of(context).colorScheme.primary),
+                child: Icon(
+                  Icons.restaurant_menu,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -47,7 +110,10 @@ class MenuDetailScreen extends StatelessWidget {
                   children: [
                     Text(
                       product.name,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -85,54 +151,5 @@ class MenuDetailScreen extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  Widget _buildProductArea(BuildContext context) {
-    // Filtra usando a categoria recebida via parâmetro
-    final filteredProducts = mockProducts.where(
-          (product) => product.categoryName == selectedCategoryName,
-    ).toList();
-
-    return Padding(
-      padding: const EdgeInsets.all(20.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            selectedCategoryName,
-            style: Theme.of(context).textTheme.headlineLarge!.copyWith(
-              color: Theme.of(context).colorScheme.secondary,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const Divider(height: 20, thickness: 1),
-
-          Expanded(
-            child: filteredProducts.isEmpty
-                ? Center(
-              child: Text(
-                'Nenhum produto encontrado nesta categoria.',
-                style: TextStyle(color: Colors.grey[600], fontSize: 18),
-              ),
-            )
-                : ListView.builder(
-              itemCount: filteredProducts.length,
-              itemBuilder: (context, index) {
-                final product = filteredProducts[index];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12.0),
-                  child: _buildProductCard(product, context),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return _buildProductArea(context);
   }
 }
