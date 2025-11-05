@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../data/api_service.dart';
 import '../../../model/ticket.dart';
+import '../../common/split_ticket_dialog.dart';
 
 class TicketDetailScreen extends StatelessWidget {
   final Ticket ticket;
@@ -14,6 +15,23 @@ class TicketDetailScreen extends StatelessWidget {
     required this.apiService,
     required this.onNavigateToPayment,
   });
+
+  void _handleSplitTicket(BuildContext context, TicketDetail detail) async {
+    final bool? splitSuccess = await showDialog<bool>(
+      context: context,
+      builder: (context) => SplitTicketDialog(
+        currentTicket: detail,
+        apiService: apiService,
+      ),
+    );
+
+    if (splitSuccess == true) {
+      if (context.mounted) {
+
+        Navigator.pop(context, true);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +75,8 @@ class TicketDetailScreen extends StatelessWidget {
               const Divider(),
               _buildItemsHeader(context, detail),
               Expanded(child: _buildItemsList(context, detail)),
-              _buildPaymentButton(context, detail),
+
+              _buildActionButtons(context, detail),
             ],
           );
         },
@@ -142,7 +161,8 @@ class TicketDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPaymentButton(BuildContext context, TicketDetail detail) {
+
+  Widget _buildActionButtons(BuildContext context, TicketDetail detail) {
     return Container(
       padding: const EdgeInsets.all(16.0),
       width: double.infinity,
@@ -156,10 +176,42 @@ class TicketDetailScreen extends StatelessWidget {
           ),
         ],
       ),
+      child: Row(
+        children: [
+
+          _buildSplitButton(context, detail),
+          const SizedBox(width: 10),
+
+          _buildPaymentButton(context, detail),
+        ],
+      ),
+    );
+  }
+
+
+  Widget _buildSplitButton(BuildContext context, TicketDetail detail) {
+    return Expanded(
+      child: ElevatedButton.icon(
+        onPressed: () => _handleSplitTicket(context, detail),
+        icon: const Icon(Icons.call_split),
+        label: const Text('Dividir'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.orange.shade600,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 15),
+          textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+
+  Widget _buildPaymentButton(BuildContext context, TicketDetail detail) {
+    return Expanded(
       child: ElevatedButton.icon(
         onPressed: () => onNavigateToPayment(ticket),
         icon: const Icon(Icons.payment),
-        label: Text('Pagar Comanda (R\$ ${detail.total.toStringAsFixed(2)})'),
+        label: Text('Pagar (R\$ ${detail.total.toStringAsFixed(2)})'),
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.green.shade600,
           foregroundColor: Colors.white,
