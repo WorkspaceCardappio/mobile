@@ -411,14 +411,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   children: <Widget>[
                     ElevatedButton.icon(
                       onPressed: details.onStepContinue,
-                      icon: Icon(
-                        details.currentStep == 0
-                            ? Icons.arrow_forward
-                            : Icons.check_circle_outline,
-                      ),
+                      // START FIX: Updated Icons for a cleaner, more modern look
+                      // icon: Icon(
+                      //   details.currentStep == 0
+                      //       ? Icons.chevron_right_rounded // Cleaner arrow for next step
+                      //       : Icons.check_circle, // Solid checkmark for final action
+                      // ),
+                      // END FIX
                       label: Text(
                         details.currentStep == 0
-                            ? 'Confirmar Comanda'
+                            ? '    Confirmar    '
                             : 'Finalizar Pagamento',
                       ),
                       style: ElevatedButton.styleFrom(
