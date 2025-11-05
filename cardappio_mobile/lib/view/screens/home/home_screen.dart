@@ -3,6 +3,9 @@ import 'package:carousel_slider/carousel_slider.dart' as caro;
 import '../../../data/api_service.dart';
 import '../../../model/menu.dart';
 
+// Importante: Se o erro 'CarouselController' persistir, use o hide:
+// import 'package:flutter/material.dart' hide CarouselController;
+
 class MenuItem {
   final String name;
   final String imageUrl;
@@ -12,6 +15,11 @@ class MenuItem {
 }
 
 final List<MenuItem> promoItemsList = [
+  // Lembre-se de mudar 'lib/images/' para 'assets/images/' se você seguiu o padrão de assets.
+  MenuItem(
+      name: 'Prato Feito Executivo',
+      imageUrl: 'lib/images/pf.jpeg',
+      price: 'R\$ 38,90'),
   MenuItem(
       name: 'Bife Grelhado com Tomate Cereja',
       imageUrl: 'lib/images/prato.jpeg',
@@ -24,13 +32,7 @@ final List<MenuItem> promoItemsList = [
       name: 'Macarrão com Frutos do Mar',
       imageUrl: 'lib/images/macarrao.jpeg',
       price: 'R\$ 59,90'),
-  MenuItem(
-      name: 'Prato Feito Executivo',
-      imageUrl: 'lib/images/pf.jpeg',
-      price: 'R\$ 38,90'),
 ];
-
-final MenuItem promoItem = promoItemsList[0];
 
 final List<MenuItem> houseRecommendations = [
   MenuItem(
@@ -65,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _activePage = 0;
   final caro.CarouselSliderController _carouselController = caro.CarouselSliderController();
 
- @override
+  @override
   void initState() {
     super.initState();
   }
@@ -100,7 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _showErrorSnackBar('Erro ao buscar Cardápio: $errorMessage');
     } finally {
       overlay.remove();
-      }
+    }
   }
 
   void _showErrorSnackBar(String message) {
@@ -140,80 +142,80 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
 
           Positioned.fill(
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.black.withOpacity(0.0),
-                  Colors.black.withOpacity(0.2),
-                  Colors.black.withOpacity(0.5),
-                  Colors.black.withOpacity(0.7),
-                ],
-                stops: const [0.0, 0.5, 0.8, 1.0],
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.0),
+                    Colors.black.withOpacity(0.2),
+                    Colors.black.withOpacity(0.5),
+                    Colors.black.withOpacity(0.7),
+                  ],
+                  stops: const [0.0, 0.5, 0.8, 1.0],
+                ),
               ),
             ),
           ),
-        ),
 
-            Positioned(
-              top: 16,
-              left: 16,
-              child: Text(
-                item.name,
-                style: const TextStyle(
+          Positioned(
+            top: 16,
+            left: 16,
+            child: Text(
+              item.name,
+              style: const TextStyle(
                   color: Colors.white,
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
                   shadows: [
-                  Shadow(offset: Offset(2, 2), blurRadius: 4.0, color: Colors.black)
-                ]
-                ),
+                    Shadow(offset: Offset(2, 2), blurRadius: 4.0, color: Colors.black)
+                  ]
               ),
             ),
+          ),
 
-             Positioned(
-              bottom: 10,
-              left: 16,
-              child: Text(
-                item.price,
-                style: const TextStyle(
+          Positioned(
+            bottom: 10,
+            left: 16,
+            child: Text(
+              item.price,
+              style: const TextStyle(
                   color: Colors.white,
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
                   shadows: [
                     Shadow(offset: Offset(1, 1), blurRadius: 3.0, color: Colors.black54)
                   ]
-                ),
               ),
             ),
+          ),
 
-            Positioned(
-              bottom: 16,
-              right: 16,
-              child: ElevatedButton(
-                onPressed: () => _handleQuickOrder(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF51CF66),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(5.0),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+          Positioned(
+            bottom: 16,
+            right: 16,
+            child: ElevatedButton(
+              onPressed: () => _handleQuickOrder(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF51CF66),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(5.0),
                 ),
-                child: const Text('Adicionar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 10),
               ),
+              child: const Text('Adicionar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ),
+          ),
 
 
-          ],
-        ),
-      );
+        ],
+      ),
+    );
   }
 
-List<Widget> _buildPageIndicators() {
+  List<Widget> _buildPageIndicators() {
     return List<Widget>.generate(promoItemsList.length, (index) {
       return Container(
         margin: const EdgeInsets.symmetric(horizontal: 4.0),
@@ -298,7 +300,7 @@ List<Widget> _buildPageIndicators() {
   }
 
 
-@override
+  @override
   Widget build(BuildContext context) {
     const double horizontalPadding = 50.0;
     const double itemSpacing = 20.0;
@@ -309,58 +311,60 @@ List<Widget> _buildPageIndicators() {
       children: [
         const SizedBox(height: 10),
 
-
-         SizedBox(
-            height: MediaQuery.of(context).size.height * 0.55,
-            width: screenWidth,
+        // --- CARROSSEL ---
+        SizedBox(
+          // Altura do carrossel (ajustado para ser ligeiramente menor, mantendo 0.55 * altura total)
+          height: MediaQuery.of(context).size.height * 0.55,
+          width: screenWidth,
           child: Column(
             children: [
               Expanded(
-                    child: caro.CarouselSlider.builder(
-                      carouselController: _carouselController,
-                      itemCount: promoItemsList.length,
-                      options: caro.CarouselOptions(
-                        height: double.infinity,
-                        viewportFraction: 0.7,
-                        initialPage: 0,
-                        enableInfiniteScroll: true,
-                        enlargeCenterPage: true,
+                child: caro.CarouselSlider.builder(
+                  carouselController: _carouselController,
+                  itemCount: promoItemsList.length,
+                  options: caro.CarouselOptions(
+                    height: double.infinity,
+                    viewportFraction: 0.7,
+                    initialPage: 0,
+                    enableInfiniteScroll: true,
+                    enlargeCenterPage: true,
 
-                        autoPlay: true,
-                        autoPlayInterval: const Duration(seconds: 2),
-                        autoPlayAnimationDuration: const Duration(milliseconds: 800),
+                    autoPlay: true,
+                    autoPlayInterval: const Duration(seconds: 2),
+                    autoPlayAnimationDuration: const Duration(milliseconds: 800),
 
-                        onPageChanged: (index, reason) {
-                          setState(() {
-                            _activePage = index;
-                          });
-                        },
-                        enlargeFactor: 0.3,
-                      ),
-                      itemBuilder: (context, index, realIndex) {
-                        final item = promoItemsList[index];
-                        return _buildPromotionalCarouselItem(context, item, index);
-                      },
+                    onPageChanged: (index, reason) {
+                      setState(() {
+                        _activePage = index;
+                      });
+                    },
+                    enlargeFactor: 0.3,
                   ),
-                  ),
+                  itemBuilder: (context, index, realIndex) {
+                    final item = promoItemsList[index];
+                    return _buildPromotionalCarouselItem(context, item, index);
+                  },
+                ),
+              ),
 
-               Padding(
-                 padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: _buildPageIndicators(),
-                  ),
-               ),
-              ],
-            ),
-         ),
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: _buildPageIndicators(),
+                ),
+              ),
+            ],
+          ),
+        ),
 
-              const SizedBox(height: 10),
+        const SizedBox(height: 10),
 
-
+        // --- RECOMENDAÇÕES DA CASA (Expandido para resolver Overflow) ---
         Expanded(
+          // O Expanded garante que esta seção ocupe o espaço vertical restante.
           child: Container(
-            color: const Color(0xFF7c7973),
+            color: const Color(0xff000000),
             width: double.infinity,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -368,7 +372,7 @@ List<Widget> _buildPageIndicators() {
                 Padding(
                   padding: const EdgeInsets.only(left: horizontalPadding, top: 5.0, bottom: 12),
                   child: const Text(
-                    'Recomendações da casa',
+                    'Recomendações da Casa', // Adicionei o título de volta para clareza
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 25,
@@ -377,33 +381,36 @@ List<Widget> _buildPageIndicators() {
                   ),
                 ),
 
-                SizedBox(
-                  height: MediaQuery.of(context).size.height * 0.31,
-                  width: MediaQuery.of(context).size.width,
+                // ✅ CORREÇÃO APLICADA: O ListView agora está dentro de um Expanded
+                // para garantir que ele ocupe apenas o espaço vertical restante,
+                // eliminando o overflow de 41px.
+                Expanded(
                   child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final availableWidth = constraints.maxWidth - (horizontalPadding * 2);
+                      builder: (context, constraints) {
+                        // O LayoutBuilder não precisa mais de altura fixa,
+                        // mas precisa calcular a largura do item.
+                        final availableWidth = constraints.maxWidth - (horizontalPadding * 2);
 
-                      final totalSpacing = itemSpacing * (itemsInView - 1);
+                        final totalSpacing = itemSpacing * (itemsInView - 1);
 
-                      final itemWidth = (availableWidth - totalSpacing) / itemsInView;
+                        final itemWidth = (availableWidth - totalSpacing) / itemsInView;
 
-                      return ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: horizontalPadding),
-                        scrollDirection: Axis.horizontal,
-                        itemCount: houseRecommendations.length,
-                        itemBuilder: (context, index) {
-                          final item = houseRecommendations[index];
+                        return ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: horizontalPadding),
+                          scrollDirection: Axis.horizontal,
+                          itemCount: houseRecommendations.length,
+                          itemBuilder: (context, index) {
+                            final item = houseRecommendations[index];
 
-                          return _buildRecommendationCard(
-                            context,
-                            item,
-                            () => print('Item ${item.name} clicado'),
-                            itemWidth
-                          );
-                        },
-                      );
-                    }
+                            return _buildRecommendationCard(
+                                context,
+                                item,
+                                    () => print('Item ${item.name} clicado'),
+                                itemWidth
+                            );
+                          },
+                        );
+                      }
                   ),
                 ),
               ],

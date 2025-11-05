@@ -6,6 +6,7 @@ import '../model/category.dart';
 import '../model/menu.dart';
 import '../model/order_create_dto.dart';
 import '../model/product.dart';
+import '../model/split_orders_dto.dart';
 import '../model/ticket.dart';
 
 class ApiService {
@@ -19,7 +20,7 @@ class ApiService {
       if (response.statusCode == 200) {
         return json.decode(utf8.decode(response.bodyBytes));
       } else {
-        throw Exception('Falha na requisição: Status ${response.statusCode}');
+        throw Exception('Falha na requisição GET: Status ${response.statusCode}');
       }
     } catch (e) {
       throw Exception('Erro de conexão: ${e.toString()}');
@@ -41,6 +42,23 @@ class ApiService {
     }
   }
 
+  Future<void> _postVoid(String endpoint, Map<String, dynamic> data) async {
+    try {
+      final response = await _client.post(
+        Uri.parse(endpoint),
+        headers: {'Content-Type': 'application/json; charset=UTF-8'},
+        body: json.encode(data),
+      );
+      // O endpoint de split retorna 200 OK
+      if (response.statusCode != 200) {
+        throw Exception('Falha na requisição POST: Status ${response.statusCode}. Resposta: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Erro de conexão: ${e.toString()}');
+    }
+  }
+
+
   Future<List<Menu>> fetchMenus() async {
     final data = await _get(kMenusEndpoint);
     final List<dynamic> menusJson = data['_embedded']?['menus'] ?? [];
@@ -61,6 +79,8 @@ class ApiService {
   }
 
   Future<List<Category>> fetchCategories(String menuId) async {
+    print('TESTEEEEEEEEEEEEEEEEEEE');
+
     final endpoint = '$kCategoriesEndpoint/$menuId/flutter-categories';
     final List<dynamic> categoriesJson = await _get(endpoint);
     return categoriesJson.map((json) => Category.fromJson(json)).toList();
@@ -94,18 +114,21 @@ class ApiService {
     return [productVariable];
   }
 
+
   Future<void> createOrder(OrderCreateDTO order) async {
     const endpoint = '$kBaseUrl/api/orders';
     await _post(endpoint, order.toJson());
   }
 
+  Future<void> splitTicket(String ticketId, SplitOrdersDTO splitData) async {
+
+    final endpoint = '$kBaseUrl/api/tickets/split/$ticketId';
+
+    await _postVoid(endpoint, splitData.toJson());
+  }
 
 
-
-  // --- Métodos Mockados --- SUBSTITUIR POR BUSCA NO BACKEND
-
-
-
+  // --- Métodos Mockados ---
 
   Future<TicketDetail> fetchTicketDetails(String ticketId) async {
     await Future.delayed(kApiMockDelay);
@@ -121,16 +144,19 @@ class ApiService {
       '_embedded': {
         'items': [
           {
+            'id': 'order-item-1',
             'productName': 'Picanha com Fritas',
             'quantity': 1,
             'unitPrice': 65.00
           },
           {
+            'id': 'order-item-2',
             'productName': 'Cerveja Artesanal IPA',
             'quantity': 4,
             'unitPrice': 15.00
           },
           {
+            'id': 'order-item-3',
             'productName': 'Batata Frita',
             'quantity': 1,
             'unitPrice': 12.90

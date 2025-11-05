@@ -18,6 +18,7 @@ class TicketScreen extends StatefulWidget {
 }
 
 class _TicketScreenState extends State<TicketScreen> {
+
   int _refreshKey = 0;
 
   void _reloadTickets() {
@@ -38,6 +39,7 @@ class _TicketScreenState extends State<TicketScreen> {
     );
   }
 
+
   void _openTicketDetails(Ticket ticket) async {
     final bool? shouldReload = await Navigator.push(
       context,
@@ -49,6 +51,7 @@ class _TicketScreenState extends State<TicketScreen> {
         ),
       ),
     );
+
 
     if (shouldReload == true) {
       _reloadTickets();
