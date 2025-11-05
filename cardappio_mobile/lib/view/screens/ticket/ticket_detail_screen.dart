@@ -44,7 +44,8 @@ class TicketDetailScreen extends StatelessWidget {
         elevation: 1,
       ),
       body: FutureBuilder<TicketDetail>(
-        future: apiService.fetchTicketDetails(ticket.id),
+        // ⭐️ ALTERADO: Passando o objeto 'ticket' inteiro
+        future: apiService.fetchTicketDetails(ticket),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());

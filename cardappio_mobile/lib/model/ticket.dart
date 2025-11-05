@@ -65,4 +65,26 @@ class TicketDetail extends Ticket {
       items: items,
     );
   }
+
+  factory TicketDetail.fromBackendFlutterTicketJson({
+    required Map<String, dynamic> json,
+    required Ticket baseTicket,
+  }) {
+    final List<dynamic> ordersJson = json['orders'] ?? [];
+
+    final List<TicketItem> items = ordersJson
+        .map((itemJson) =>
+        TicketItem.fromBackendFlutterTicketJson(itemJson as Map<String, dynamic>))
+        .toList();
+
+    final double total = (json['total'] as num).toDouble();
+
+    return TicketDetail(
+      id: baseTicket.id,
+      number: baseTicket.number,
+      createdAt: baseTicket.createdAt,
+      total: total,
+      items: items,
+    );
+  }
 }

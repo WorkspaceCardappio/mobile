@@ -37,8 +37,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
     super.dispose();
   }
 
-  Future<TicketDetail> _fetchTicketDetails(String ticketId) async {
-    final detail = await widget.apiService.fetchTicketDetails(ticketId);
+  // ⭐️ ALTERADO: Recebe o objeto Ticket completo para passar ao ApiService
+  // (que já tem o ID e dados base como mesa e data)
+  Future<TicketDetail> _fetchTicketDetails(Ticket ticket) async {
+    final detail = await widget.apiService.fetchTicketDetails(ticket);
     if (mounted) {
       setState(() {
         _ticketDetail = detail;
@@ -159,8 +161,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   Widget _buildTicketDetailsLoader() {
+    // ⭐️ ALTERADO: Passando o objeto 'Ticket' inteiro para _fetchTicketDetails
     return FutureBuilder<TicketDetail>(
-      future: _fetchTicketDetails(_selectedTicket!.id),
+      future: _fetchTicketDetails(_selectedTicket!),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Padding(

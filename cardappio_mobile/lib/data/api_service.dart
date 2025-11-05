@@ -79,8 +79,6 @@ class ApiService {
   }
 
   Future<List<Category>> fetchCategories(String menuId) async {
-    print('TESTEEEEEEEEEEEEEEEEEEE');
-
     final endpoint = '$kCategoriesEndpoint/$menuId/flutter-categories';
     final List<dynamic> categoriesJson = await _get(endpoint);
     return categoriesJson.map((json) => Category.fromJson(json)).toList();
@@ -127,45 +125,33 @@ class ApiService {
     await _postVoid(endpoint, splitData.toJson());
   }
 
+  // --- Método Real (Não mais mockado) ---
 
-  // --- Métodos Mockados ---
+  Future<TicketDetail> fetchTicketDetails(Ticket baseTicket) async {
+    // kTicketsEndpoint deve ser o endpoint base (ex: http://localhost:8080/api/tickets)
+    final uri = Uri.parse('http://10.0.2.2:8080/api/tickets/flutter-tickets/by-ticket/${baseTicket.id}');
 
-  Future<TicketDetail> fetchTicketDetails(String ticketId) async {
-    await Future.delayed(kApiMockDelay);
+    print('DEBUG URL: $uri'); // ✅ USE ESTE PRINT PARA CONFERIR!
 
-    final Map<String, dynamic> mockData = {
-      'id': ticketId,
-      'tableNumber': 5,
-      'total': 137.90,
-      'createdAt': DateTime.now().toIso8601String(),
-      '_links': {
-        'self': {'href': '$kBaseUrl/tickets/$ticketId'}
-      },
-      '_embedded': {
-        'items': [
-          {
-            'id': 'order-item-1',
-            'productName': 'Picanha com Fritas',
-            'quantity': 1,
-            'unitPrice': 65.00
-          },
-          {
-            'id': 'order-item-2',
-            'productName': 'Cerveja Artesanal IPA',
-            'quantity': 4,
-            'unitPrice': 15.00
-          },
-          {
-            'id': 'order-item-3',
-            'productName': 'Batata Frita',
-            'quantity': 1,
-            'unitPrice': 12.90
-          },
-        ],
-      },
-    };
+    try {
+      final response = await _client.get(uri);
 
-    return TicketDetail.fromJson(mockData);
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonResponse = jsonDecode(utf8.decode(response.bodyBytes));
+
+        // Usa o factory que combina a resposta do backend com o Ticket base
+        return TicketDetail.fromBackendFlutterTicketJson(
+          json: jsonResponse,
+          baseTicket: baseTicket,
+        );
+      } else if (response.statusCode == 404) {
+        throw Exception('Comanda não encontrada: ID ${baseTicket.id}');
+      } else {
+        throw Exception('Falha ao carregar detalhes. Status: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Erro de rede: ${e.toString()}');
+    }
   }
 
   Future<bool> payTicket(String ticketId) async {
