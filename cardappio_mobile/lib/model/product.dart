@@ -11,6 +11,8 @@ class Product {
   final String description;
   final double price;
   final String? categoryName;
+  final String? note; // <<< ADICIONADO: Campo opcional para notas
+  final String image;  // <<< ADICIONADO: Campo para URL da imagem
 
   Product({
     required this.id,
@@ -18,6 +20,8 @@ class Product {
     required this.description,
     required this.price,
     this.categoryName,
+    this.note,
+    required this.image, // <<< ADICIONADO ao construtor
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -26,6 +30,9 @@ class Product {
       name: json['name'] as String,
       description: json['description'] as String? ?? '',
       price: (json['price'] as num).toDouble(),
+      categoryName: json['categoryName'] as String?, // Mantido, se existir no JSON
+      note: json['note'] as String?, // <<< LÊ o campo 'note'
+      image: json['image'] as String? ?? '', // <<< LÊ o campo 'image' (string vazia se nulo)
     );
   }
 }
