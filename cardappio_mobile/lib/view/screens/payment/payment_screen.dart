@@ -150,10 +150,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Selecione a comanda para visualizar os detalhes:',
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
+        // Text(
+        //   'Selecione a comanda para visualizar os detalhes:',
+        //   style: Theme.of(context).textTheme.bodyMedium,
+        // ),
         const SizedBox(height: 10),
         DropdownButtonFormField<Ticket>(
           decoration: InputDecoration(
@@ -246,10 +246,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   'Comanda ${detail.number}',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
-                Text(
-                  'Comanda #${detail.id.substring(0, 4)}',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
+                // Text(
+                //   'Comanda #${detail.id.substring(0, 4)}',
+                //   style: Theme.of(context).textTheme.bodyMedium,
+                // ),
               ],
             ),
             const Divider(height: 20),

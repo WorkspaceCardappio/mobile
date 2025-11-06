@@ -58,8 +58,37 @@ class _TicketScreenState extends State<TicketScreen> {
     }
   }
 
+  // ⭐️ NOVO WIDGET: Ícone de Comanda Sutil (Substituindo o Stack complexo)
+  Widget _buildTicketLeading(BuildContext context, int ticketNumber) {
+    final Color primaryColor = Theme.of(context).colorScheme.primary;
+
+    return Container(
+      width: 50,
+      height: 50,
+      decoration: BoxDecoration(
+        color: primaryColor.withOpacity(0.1), // Fundo suave
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Center(
+        child: Text(
+          '#${ticketNumber}',
+          style: TextStyle(
+            color: primaryColor,
+            fontWeight: FontWeight.w800,
+            fontSize: 16,
+          ),
+        ),
+      ),
+    );
+  }
+
+
   @override
   Widget build(BuildContext context) {
+    // ⭐️ COR SECUNDÁRIA MODERNA: Verde claro sóbrio
+    final Color modernGreen = Colors.green.shade400;
+    final Color accentColor = Theme.of(context).colorScheme.secondary;
+
     return Column(
       children: [
         Padding(
@@ -72,7 +101,7 @@ class _TicketScreenState extends State<TicketScreen> {
                 style: Theme.of(context).textTheme.headlineMedium!.copyWith(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.secondary,
+                  color: accentColor,
                 ),
               ),
               IconButton(
@@ -107,38 +136,63 @@ class _TicketScreenState extends State<TicketScreen> {
                 itemCount: tickets.length,
                 itemBuilder: (context, index) {
                   final ticket = tickets[index];
-                  final dateFormat = DateFormat('dd/MM/yyyy HH:mm:ss');
+                  // Formato de data mais limpo (sem segundos)
+                  final dateFormat = DateFormat('dd/MM/yyyy • HH:mm');
                   final formattedDate = dateFormat.format(ticket.createdAt);
 
                   return Card(
                     margin: const EdgeInsets.only(bottom: 12),
                     elevation: 3,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     child: ListTile(
-                      contentPadding: const EdgeInsets.all(16),
-                      leading: CircleAvatar(
-                        backgroundColor: Theme.of(context).colorScheme.primary,
-                        child: Text(
-                          ticket.number.toString(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+
+                      // ⭐️ LEADING: Ícone de número customizado
+                      leading: _buildTicketLeading(context, ticket.number),
+
+                      // ⭐️ TÍTULO PROFISSIONAL E LIMPO
+                      // title: Text(
+                      //   'Comanda #${ticket.number}',
+                      //   style: Theme.of(context).textTheme.titleMedium!.copyWith(
+                      //     fontWeight: FontWeight.w600,
+                      //     fontSize: 17,
+                      //   ),
+                      // ),
+
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // ⭐️ DESTAQUE DO TOTAL (Verde Moderno)
+                          Text(
+                            'Total: R\$ ${ticket.total.toStringAsFixed(2)}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                              color: modernGreen, // ⭐️ Aplicação da nova cor
+                            ),
                           ),
-                        ),
+                          const SizedBox(height: 4),
+                          // DATA FORMATADA
+                          Row(
+                            children: [
+                              Icon(Icons.access_time, size: 14, color: Colors.grey.shade500),
+                              const SizedBox(width: 4),
+                              Text(
+                                formattedDate,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
-                      title: Text(
-                        'Comanda #${ticket.id}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-                      subtitle: Text(
-                        'Mesa: ${ticket.number} - Total: R\$ ${ticket.total.toStringAsFixed(2)}\nAberta em: $formattedDate',
-                      ),
+
                       trailing: Icon(
-                        Icons.arrow_forward_ios,
-                        size: 16,
-                        color: Theme.of(context).colorScheme.secondary,
+                        Icons.chevron_right_rounded,
+                        size: 24,
+                        color: modernGreen, // ⭐️ Aplicação da nova cor
                       ),
                       onTap: () => _openTicketDetails(ticket),
                     ),
@@ -151,6 +205,8 @@ class _TicketScreenState extends State<TicketScreen> {
       ],
     );
   }
+
+  // Métodos de estado de erro e vazio (mantidos)
 
   Widget _buildErrorState(BuildContext context, Object error) {
     return Center(

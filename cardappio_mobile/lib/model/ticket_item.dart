@@ -7,14 +7,16 @@ class TicketItem {
 
   double get subtotal => unitPrice * quantity;
 
+  // ⭐️ CORREÇÃO 1: Remover o fallback 'N/A' e tornar o ID obrigatório no construtor
   TicketItem({
-    this.id = 'N/A',
+    required this.id,
     required this.productName,
     required this.quantity,
     required this.unitPrice
   });
 
   factory TicketItem.fromJson(Map<String, dynamic> json) {
+    // Mantém fallback para IDs mock ou ausentes em APIs mais antigas
     return TicketItem(
       id: json['id'] as String? ?? 'mock_order_id',
       productName: json['productName'] as String? ?? 'Item Desconhecido',
@@ -24,8 +26,11 @@ class TicketItem {
   }
 
   factory TicketItem.fromBackendFlutterTicketJson(Map<String, dynamic> json) {
+    // 🚀 CORREÇÃO 2: Lê o UUID real do campo 'id' do JSON (que agora está presente)
+    final String orderId = json['id'] as String;
+
     return TicketItem(
-      id: 'N/A',
+      id: orderId, // Usa o UUID real
       productName: json['name'] as String,
       quantity: json['quantity'] as int,
       unitPrice: (json['price'] as num).toDouble(),

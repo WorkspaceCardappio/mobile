@@ -1,5 +1,3 @@
-
-
 import 'package:flutter/material.dart';
 import '../../data/api_service.dart';
 import '../../model/split_orders_dto.dart';
@@ -21,17 +19,26 @@ class SplitTicketDialog extends StatefulWidget {
 }
 
 class _SplitTicketDialogState extends State<SplitTicketDialog> {
-  final Set<String> _selectedOrderIds = {};
-  String? _selectedDestinationTicketId;
+  final Set<String> _selectedOrderKeys = {};
+
+  // Mantemos o destino nulo, indicando ao backend para criar um novo ticket.
+  final String? _selectedDestinationTicketId = null;
+
+  // Mantemos _availableTickets e _isLoading apenas se forem usados em outras partes
+  // do initState (embora não sejam mais necessários para a UI de destino).
+  // Se _fetchAvailableTickets não for mais necessário, ele pode ser removido,
+  // mas o mantemos para evitar quebras em outras partes.
   List<Ticket> _availableTickets = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    // Chamada mantida caso seja necessária para outras validações futuras.
     _fetchAvailableTickets();
   }
 
+  // Método mantido, mas não afeta a UI de destino.
   Future<void> _fetchAvailableTickets() async {
     try {
       final allTickets = await widget.apiService.fetchTickets();
@@ -51,31 +58,43 @@ class _SplitTicketDialogState extends State<SplitTicketDialog> {
     }
   }
 
-  void _toggleItemSelection(String orderId) {
+  void _toggleItemSelection(String uniqueKey) {
     setState(() {
-      if (_selectedOrderIds.contains(orderId)) {
-        _selectedOrderIds.remove(orderId);
+      if (_selectedOrderKeys.contains(uniqueKey)) {
+        _selectedOrderKeys.remove(uniqueKey);
       } else {
-        _selectedOrderIds.add(orderId);
+        _selectedOrderKeys.add(uniqueKey);
       }
     });
   }
 
   Future<void> _handleSplit() async {
-    if (_selectedOrderIds.isEmpty) {
+    if (_selectedOrderKeys.isEmpty) {
       _showSnackBar('Selecione ao menos um item para dividir.');
       return;
     }
 
-
-    if (_selectedOrderIds.length == widget.currentTicket.items.length) {
+    if (_selectedOrderKeys.length == widget.currentTicket.items.length) {
       _showSnackBar('Não é permitido dividir todos os itens da comanda.');
       return;
     }
 
+    // Extrai o ID real. Como o modelo TicketItem agora tem o Order ID real (ou ProductOrder ID),
+    // a lógica de split no backend deve funcionar.
+    final realOrderIds = _selectedOrderKeys
+        .map((key) => key.split('_').first)
+        .where((id) => id.isNotEmpty)
+        .toSet();
+
+    if (realOrderIds.isEmpty) {
+      _showSnackBar('Os itens selecionados não possuem um ID de pedido válido.');
+      return;
+    }
+
+    // O destino é sempre nulo, forçando a criação de um novo ticket no backend.
     final splitData = SplitOrdersDTO(
-      orders: _selectedOrderIds,
-      ticket: _selectedDestinationTicketId,
+      orders: realOrderIds,
+      ticket: null, // Destino fixo: Criar Nova Comanda
     );
 
     try {
@@ -121,12 +140,12 @@ class _SplitTicketDialogState extends State<SplitTicketDialog> {
               Text('Selecione os itens a serem movidos:', style: Theme.of(context).textTheme.titleSmall),
               const SizedBox(height: 8),
               _buildItemsList(),
-              const Divider(height: 20),
 
-
-              Text('Mover para:', style: Theme.of(context).textTheme.titleSmall),
-              const SizedBox(height: 8),
-              _buildDestinationSelector(),
+              // ❌ REMOVIDO: Seção "Mover para:"
+              // const Divider(height: 20),
+              // Text('Mover para:', style: Theme.of(context).textTheme.titleSmall),
+              // const SizedBox(height: 8),
+              // _buildDestinationSelector(), // Método removido abaixo
             ],
           ),
         ),
@@ -146,70 +165,32 @@ class _SplitTicketDialogState extends State<SplitTicketDialog> {
 
   Widget _buildItemsList() {
     return Column(
-      children: widget.currentTicket.items.map((item) {
-        final isSelected = _selectedOrderIds.contains(item.id);
+      children: widget.currentTicket.items.asMap().entries.map((entry) {
+        final index = entry.key;
+        final item = entry.value;
+
+        // Cria a chave única: ID do pedido/produto + índice
+        final uniqueKey = '${item.id}_$index';
+
+        // Usa o Set de chaves corrigido
+        final isSelected = _selectedOrderKeys.contains(uniqueKey);
+
         return CheckboxListTile(
           value: isSelected,
-          onChanged: (_) => _toggleItemSelection(item.id),
+          onChanged: (_) => _toggleItemSelection(uniqueKey), // Usa a chave única
           title: Text('${item.quantity}x ${item.productName}'),
           subtitle: Text('R\$ ${item.subtotal.toStringAsFixed(2)}'),
           controlAffinity: ListTileControlAffinity.leading,
-          tileColor: isSelected ? Colors.blue.shade50 : null,
+          tileColor: isSelected ? Theme.of(context).colorScheme.primary.withOpacity(0.1) : null,
         );
       }).toList(),
     );
   }
 
+// ❌ REMOVIDO: Método _buildDestinationSelector não é mais necessário.
+/*
   Widget _buildDestinationSelector() {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        RadioListTile<String?>(
-          title: const Text('Criar Nova Comanda'),
-          value: null,
-          groupValue: _selectedDestinationTicketId,
-          onChanged: (value) => setState(() => _selectedDestinationTicketId = value),
-        ),
-        const Divider(height: 1),
-        RadioListTile<String?>(
-          title: Text('Comanda Existente (${_availableTickets.length} disponíveis)'),
-          value: 'select', // Valor temporário para abrir o dropdown
-          groupValue: _selectedDestinationTicketId != null ? 'select' : null,
-          onChanged: (value) {
-            if (value == 'select') {
-              setState(() => _selectedDestinationTicketId = _availableTickets.isNotEmpty ? _availableTickets.first.id : null);
-            }
-          },
-        ),
-        if (_selectedDestinationTicketId != null)
-          Padding(
-            padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 8.0),
-            child: DropdownButtonFormField<String>(
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'Selecione a Comanda Destino',
-              ),
-              value: _selectedDestinationTicketId,
-              items: _availableTickets.map((ticket) {
-                return DropdownMenuItem(
-                  value: ticket.id,
-                  child: Text(
-                    'Mesa ${ticket.number} - Total: R\$ ${ticket.total.toStringAsFixed(2)}',
-                  ),
-                );
-              }).toList(),
-              onChanged: (String? newValue) {
-                setState(() {
-                  _selectedDestinationTicketId = newValue;
-                });
-              },
-            ),
-          ),
-      ],
-    );
+    return const SizedBox.shrink();
   }
+  */
 }
