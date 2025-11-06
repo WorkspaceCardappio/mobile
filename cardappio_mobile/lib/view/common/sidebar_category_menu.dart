@@ -16,9 +16,6 @@ class SidebarCategoryMenu extends StatelessWidget {
     required this.categories,
   });
 
-  // --- MÉTODOS DE ÍCONE REMOVIDOS ---
-  // Não precisamos mais do _categoryIcons e _getIconForCategory.
-
   @override
   Widget build(BuildContext context) {
     if (!isExpanded) {
@@ -34,13 +31,7 @@ class SidebarCategoryMenu extends StatelessWidget {
   }
 
   Widget _buildMenuContent(BuildContext context) {
-    // Se a lista está vazia, pode ser que ainda esteja carregando, mas não temos
-    // um estado de loading aqui, então vamos verificar a lista.
     if (categories.isEmpty) {
-      // O CircularProgressIndicator aqui deve ser removido ou movido para onde o
-      // _loadCategories é chamado para evitar um flash.
-      // Neste contexto, se categories é vazia, significa que o carregamento falhou ou
-      // o menu não tem categorias, então um SizedBox.shrink() pode ser mais adequado.
       return const SizedBox.shrink();
     }
 
@@ -61,83 +52,124 @@ class SidebarCategoryMenu extends StatelessWidget {
       ),
       child: Column(
         children: categories
-            .map((category) => _buildCategoryItem(context, category, menuBackgroundColor))
+            .map((category) => _buildCategoryItem(context, category))
             .toList(),
       ),
     );
   }
 
-  Widget _buildCategoryItem(BuildContext context, Category category, Color menuBackgroundColor) {
+  // Widget auxiliar para encapsular a lógica de carregamento de imagem de fundo
+  Widget _buildBackgroundImageView(String imageUrl, ColorScheme colorScheme) {
+    return CachedNetworkImage(
+      imageUrl: imageUrl,
+      fit: BoxFit.cover,
+
+      // Placeholder (Enquanto carrega)
+      placeholder: (context, url) => Center(
+        child: CircularProgressIndicator(
+          color: Colors.white70,
+          strokeWidth: 2.0,
+        ),
+      ),
+
+      // Widget de Erro (Se falhar ao carregar)
+      errorWidget: (context, url, error) {
+        // Mantenha os prints de debug aqui enquanto precisar
+        print('❌ FALHA AO CARREGAR: URL solicitada: $url | ERRO: $error');
+
+        // Retorna um fundo escuro simples com um ícone de erro discreto
+        return Container(
+          color: Colors.grey.shade900,
+          child: Center(
+            child: Icon(
+              Icons.image_not_supported,
+              color: Colors.white10,
+              size: 40,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Refatorado para usar Stack em vez de ListTile para o visual de "tira completa"
+  Widget _buildCategoryItem(BuildContext context, Category category) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isSelected = category.name == selectedCategoryName;
 
-    final selectedItemColor = Color.alphaBlend(
-      colorScheme.primary.withOpacity(0.12),
-      menuBackgroundColor,
-    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+      child: InkWell(
+        onTap: () => onCategoryTap(category.name),
+        borderRadius: BorderRadius.circular(12.0),
+        child: Container(
+          height: 80, // Altura fixa para a tira da categoria
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12.0),
+            // Adiciona uma borda destacada quando selecionado
+            border: isSelected
+                ? Border.all(color: colorScheme.primary, width: 3.0)
+                : null,
+            boxShadow: isSelected
+                ? [
+              BoxShadow(
+                color: colorScheme.primary.withOpacity(0.4),
+                blurRadius: 10,
+                spreadRadius: 1,
+              )
+            ]
+                : null,
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(10.0), // Bordas internas
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // 1. IMAGEM DE FUNDO
+                _buildBackgroundImageView(category.image, colorScheme),
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 1.0),
-      decoration: BoxDecoration(
-        color: isSelected ? selectedItemColor : Colors.transparent,
-        borderRadius: BorderRadius.circular(8.0),
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 2.0),
-
-        // Substituindo o Icon pelo CachedNetworkImage
-        leading: ClipRRect(
-          borderRadius: BorderRadius.circular(4.0),
-          child: SizedBox(
-            width: 24, // Define o tamanho fixo para a imagem
-            height: 24,
-            child: CachedNetworkImage(
-              imageUrl: category.image, // Usando o link do modelo Category
-              fit: BoxFit.cover,
-
-              // Widget de placeholder enquanto carrega
-              placeholder: (context, url) => Center(
-                child: SizedBox(
-                  width: 12,
-                  height: 12,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.0,
-                    color: colorScheme.primary,
+                // 2. GRADIENTE DE ESCURECIMENTO (Overlay)
+                Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      // Escurecimento suave em toda a imagem
+                      colors: [Colors.black54, Colors.black38],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
                   ),
                 ),
-              ),
 
-              // Widget de erro se a imagem não carregar
-              errorWidget: (context, url, error) {
-                // 1. Ações de Debug (Prints)
-                print('❌ FALHA AO CARREGAR: ${category.name}');
-                print('   URL solicitada: $url');
-                print('   Detalhes do Erro: $error');
-
-                // 2. Retorno do Widget (Obrigatório)
-                return Icon(
-                  Icons.image_not_supported,
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                  size: 18,
-                );
-              },
+                // 3. TEXTO (Elemento Superior)
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Text(
+                      category.name,
+                      style: TextStyle(
+                        color: Colors.white, // Texto Branco
+                        fontWeight: FontWeight.w800, // Forte
+                        fontSize: 18,
+                        // Adiciona um leve contorno para garantir legibilidade
+                        shadows: [
+                          Shadow(
+                            color: Colors.black.withOpacity(0.7),
+                            offset: Offset(1, 1),
+                            blurRadius: 3,
+                          ),
+                        ],
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
-
-        title: Text(
-          category.name,
-          style: TextStyle(
-            color: isSelected ? colorScheme.primary : colorScheme.onSurface,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-            fontSize: 14,
-          ),
-          overflow: TextOverflow.ellipsis,
-        ),
-        onTap: () => onCategoryTap(category.name),
-        splashColor: selectedItemColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
       ),
     );
   }
