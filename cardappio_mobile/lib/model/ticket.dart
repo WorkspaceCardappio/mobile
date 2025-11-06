@@ -100,4 +100,8 @@ class TicketDetail extends Ticket {
       items: items,
     );
   }
+
+  double get calculatedTotal {
+    return items.fold(0.0, (sum, item) => sum + item.subtotal);
+  }
 }

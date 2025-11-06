@@ -57,7 +57,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
             if (mounted) {
               setState(() {
                 _ticketDetail = detail;
-                _updatePartialAmount(detail.total);
+                // ⭐️ USO DO CALCULATED TOTAL: Usar o valor calculado do getter
+                _updatePartialAmount(detail.calculatedTotal);
               });
             }
           });
@@ -80,8 +81,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   void _handlePaymentProcessing() async {
-    // Lógica de processamento de pagamento...
-    if (_selectedTicket == null || _ticketDetail == null) {
+    // ⭐️ VARIÁVEL LOCAL PARA O TOTAL CALCULADO
+    final double grandTotal = _ticketDetail?.calculatedTotal ?? 0.0;
+
+    if (_selectedTicket == null || _ticketDetail == null || grandTotal == 0.0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Comanda não selecionada ou detalhes não carregados.'),
@@ -92,11 +95,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
     double amountToPay = 0.0;
     if (_paymentOption == 'total') {
-      amountToPay = _ticketDetail!.total;
+      // ⭐️ USO DO CALCULATED TOTAL
+      amountToPay = grandTotal;
     } else {
       amountToPay =
           double.tryParse(_partialController.text.replaceAll(',', '.')) ?? 0.0;
-      if (amountToPay <= 0 || amountToPay > _ticketDetail!.total) {
+      // ⭐️ USO DO CALCULATED TOTAL
+      if (amountToPay <= 0 || amountToPay > grandTotal) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Valor parcial inválido.')),
         );
@@ -221,8 +226,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
-  // ⭐️ Método RESTAURADO/CORRIGIDO: _buildTicketDetailConfirmation
+  // ⭐️ MÉTODO CORRIGIDO: Usa detail.calculatedTotal para exibir o total correto
   Widget _buildTicketDetailConfirmation(TicketDetail detail) {
+    // ⭐️ Obtém o total calculado
+    final double grandTotal = detail.calculatedTotal;
+
     return Card(
       margin: const EdgeInsets.only(top: 20),
       elevation: 4,
@@ -279,7 +287,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 Text(
-                  'R\$ ${detail.total.toStringAsFixed(2)}',
+                  // ⭐️ USO DO CALCULATED TOTAL
+                  'R\$ ${grandTotal.toStringAsFixed(2)}',
                   style: Theme.of(context).textTheme.headlineMedium!.copyWith(
                     fontSize: 24,
                     color: Colors.green.shade700,
@@ -293,17 +302,20 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
-  // ⭐️ Método RESTAURADO: _buildStep2PaymentOptions
+  // ⭐️ MÉTODO CORRIGIDO: Usa calculatedTotal para exibição e validação
   Widget _buildStep2PaymentOptions() {
     if (_ticketDetail == null) {
       return const Center(child: Text('Carregando detalhes da comanda...'));
     }
 
+    final double grandTotal = _ticketDetail!.calculatedTotal;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Comanda: ${_ticketDetail!.number} | Total: R\$ ${_ticketDetail!.total.toStringAsFixed(2)}',
+          // ⭐️ USO DO CALCULATED TOTAL
+          'Comanda: ${_ticketDetail!.number} | Total: R\$ ${grandTotal.toStringAsFixed(2)}',
           style: Theme.of(context).textTheme.titleLarge!.copyWith(
             fontSize: 18,
             color: Theme.of(context).colorScheme.secondary,
@@ -321,7 +333,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
           groupValue: _paymentOption,
           onChanged: (value) => setState(() {
             _paymentOption = value!;
-            _updatePartialAmount(_ticketDetail!.total);
+            // ⭐️ USO DO CALCULATED TOTAL
+            _updatePartialAmount(grandTotal);
           }),
           activeColor: Theme.of(context).colorScheme.primary,
         ),
@@ -340,7 +353,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(
                 labelText:
-                'Valor a Pagar (Máx: R\$ ${_ticketDetail!.total.toStringAsFixed(2)})',
+                // ⭐️ USO DO CALCULATED TOTAL
+                'Valor a Pagar (Máx: R\$ ${grandTotal.toStringAsFixed(2)})',
                 prefixText: 'R\$ ',
                 border: const OutlineInputBorder(),
               ),
@@ -350,7 +364,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
-  // ⭐️ Método RESTAURADO: _buildSteps
+  // ⭐️ Métodos _buildSteps, _onStepContinue, _onStepCancel e build permanecem iguais
+  // ...
+  // [O resto do código abaixo não foi alterado pois não envolve a lógica de total]
+  // ...
+
   List<Step> _buildSteps(List<Ticket> availableTickets) {
     return [
       Step(
@@ -370,7 +388,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
     ];
   }
 
-  // ⭐️ Método RESTAURADO: _onStepContinue
   void _onStepContinue() {
     if (_currentStep == 0) {
       if (_selectedTicket != null && _ticketDetail != null) {
@@ -387,7 +404,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
     }
   }
 
-  // ⭐️ Método RESTAURADO: _onStepCancel
   void _onStepCancel() {
     if (_currentStep > 0) {
       setState(() => _currentStep -= 1);
@@ -432,16 +448,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ticketToSelect = availableTickets.first;
           }
 
-          // Se encontramos um ticket para selecionar E ele é diferente do ticket atual,
-          // fazemos o setState e iniciamos a busca.
           if (ticketToSelect != null && _selectedTicket != ticketToSelect) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
                 setState(() {
                   _selectedTicket = ticketToSelect;
-                  _ticketDetail = null; // Limpa o detalhe antigo
+                  _ticketDetail = null;
                 });
-                // ⭐️ CORREÇÃO: Checa se é nulo antes de passar para _startFetchingDetails
                 _startFetchingDetails(ticketToSelect!);
               }
             });
@@ -450,9 +463,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
           return Stepper(
             type: StepperType.vertical,
             currentStep: _currentStep,
-            onStepContinue: _onStepContinue, // ⭐️ Método corrigido
-            onStepCancel: _onStepCancel,     // ⭐️ Método corrigido
-            steps: _buildSteps(availableTickets), // ⭐️ Método corrigido
+            onStepContinue: _onStepContinue,
+            onStepCancel: _onStepCancel,
+            steps: _buildSteps(availableTickets),
             controlsBuilder: (context, details) {
               return Padding(
                 padding: const EdgeInsets.only(top: 20.0),
@@ -460,11 +473,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   children: <Widget>[
                     ElevatedButton.icon(
                       onPressed: details.onStepContinue,
-
+                      icon: Icon(
+                        details.currentStep == 0
+                            ? Icons.chevron_right_rounded
+                            : Icons.check_circle,
+                      ),
                       label: Text(
                         details.currentStep == 0
                             ? '    Confirmar    '
-                            : 'Finalizar Pagamento',
+                            : ' Finalizar Pagamento',
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: details.currentStep == 0
