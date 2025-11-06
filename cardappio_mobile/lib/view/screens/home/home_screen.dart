@@ -23,10 +23,10 @@ final List<MenuItem> promoItemsList = [
 ];
 
 final List<MenuItem> houseRecommendations = [
-  MenuItem(name: 'Carne Grelhada c/ Batata', imageUrl: 'assets/images/prato.jpeg', price: 'R\$ 47,99'),
-  MenuItem(name: 'Salmão Grelhado', imageUrl: 'assets/images/salmao.jpeg', price: 'R\$ 75,00'),
-  MenuItem(name: 'Tiramisù Italiano', imageUrl: 'assets/images/tiramisu.jpeg', price: 'R\$ 22,50'),
-  MenuItem(name: 'Sopa Cremosa', imageUrl: 'assets/images/sopa.jpeg', price: 'R\$ 35,00'),
+  MenuItem(name: 'Carne Grelhada c/ Batata', imageUrl: 'https://i.panelinha.com.br/i1/bk-2979-carne-de-panela-com-cenoura-e-batata-na-pressao.webp', price: 'R\$ 47,99'),
+  MenuItem(name: 'Salmão Grelhado', imageUrl: 'https://www.comidaereceitas.com.br/wp-content/uploads/2020/03/Salmao-assado-no-forno-freepik-780x520.jpg', price: 'R\$ 75,00'),
+  MenuItem(name: 'Tiramisù Italiano', imageUrl: 'https://cdn.casaeculinaria.com/wp-content/uploads/2023/03/15114930/Tiramisu.jpg', price: 'R\$ 22,50'),
+  MenuItem(name: 'Sopa Cremosa', imageUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRlR9ibYhTdIfgWGiiQNUpkS5uO1Ya1XlaK9g&s', price: 'R\$ 35,00'),
 ];
 
 class HomeScreen extends StatefulWidget {
@@ -337,6 +337,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
+    // ⭐️ REVERTENDO CORREÇÃO ANTERIOR: Remove o Padding de 8.0
     return Column(
       children: [
 
@@ -373,20 +374,27 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
 
-              Padding(
-                padding: const EdgeInsets.only(top: 10.0, bottom: 20.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: _buildPageIndicators(),
+              // ⭐️ CORREÇÃO: Envolver o Padding do contador em um Container opaco e preto
+              // Isso garante que ele cubra a sombra do menu lateral, mesmo sem Padding externo.
+              Container(
+                color: colorScheme.background, // Fundo opaco para cobrir a sombra
+                width: double.infinity, // Ocupa toda a largura
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 10.0, bottom: 20.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: _buildPageIndicators(),
+                  ),
                 ),
               ),
             ],
           ),
         ),
 
-        // --- SEÇÃO 2: RECOMENDAÇÕES DA CASA (Agora usa Expanded para ocupar o restante do espaço) ---
+        // --- SEÇÃO 2: RECOMENDAÇÕES DA CASA ---
         Expanded(
           child: Container(
+            // A cor de fundo opaca (colorScheme.background) da Home já deve cobrir a sombra
             color: colorScheme.background,
             padding: const EdgeInsets.only(bottom: 20.0),
             child: Column(
@@ -394,16 +402,29 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 20.0),
-                  child: Text(
-                    '✨ Recomendações do Chef',
-                    style: theme.textTheme.headlineSmall!.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: colorScheme.onBackground,
-                    ),
+                  child: Row( // ⭐️ Novo Row para o Ícone e Título
+                    children: [
+                      // ⭐️ Ícone de Destaque
+                      Icon(
+                        Icons.flash_on_rounded, // Ícone de promoção/velocidade
+                        color: colorScheme.primary, // Cor principal para forte destaque
+                        size: 30,
+                      ),
+                      const SizedBox(width: 8),
+                      // ⭐️ Título Profissional de Promoção
+                      Text(
+                        'OFERTAS ESPECIAIS', // Texto em caixa alta para ênfase
+                        style: theme.textTheme.headlineSmall!.copyWith(
+                          fontWeight: FontWeight.w900, // Extremo negrito
+                          color: colorScheme.primary, // Cor do texto igual à cor principal
+                          letterSpacing: 0.8, // Espaçamento entre letras (profissional)
+                        ),
+                      ),
+                    ],
                   ),
                 ),
 
-                // Lista Horizontal: Ocupa o espaço restante dentro do Expanded pai
+                // Lista Horizontal
                 Expanded(
                   child: LayoutBuilder(
                       builder: (context, constraints) {

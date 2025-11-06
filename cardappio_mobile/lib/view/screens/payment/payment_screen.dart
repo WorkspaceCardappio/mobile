@@ -20,6 +20,8 @@ class PaymentScreen extends StatefulWidget {
 class _PaymentScreenState extends State<PaymentScreen> {
   Ticket? _selectedTicket;
   TicketDetail? _ticketDetail;
+  Future<TicketDetail>? _ticketDetailFuture;
+
   int _currentStep = 0;
   String _paymentOption = 'total';
   double _partialAmount = 0.0;
@@ -29,6 +31,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
   void initState() {
     super.initState();
     _selectedTicket = widget.preSelectedTicket;
+
+    if (_selectedTicket != null) {
+      _startFetchingDetails(_selectedTicket!);
+    }
   }
 
   @override
@@ -37,17 +43,33 @@ class _PaymentScreenState extends State<PaymentScreen> {
     super.dispose();
   }
 
-  // ⭐️ ALTERADO: Recebe o objeto Ticket completo para passar ao ApiService
-  // (que já tem o ID e dados base como mesa e data)
-  Future<TicketDetail> _fetchTicketDetails(Ticket ticket) async {
-    final detail = await widget.apiService.fetchTicketDetails(ticket);
-    if (mounted) {
-      setState(() {
-        _ticketDetail = detail;
-        _updatePartialAmount(detail.total);
+  // ⭐️ Método NOVO/CORRIGIDO: Inicia a requisição e armazena o Future.
+  void _startFetchingDetails(Ticket ticket) {
+    // 1. Inicia a requisição da API
+    final future = widget.apiService.fetchTicketDetails(ticket);
+
+    // 2. Armazena o Future na variável de estado
+    setState(() {
+      _ticketDetailFuture = future.then((detail) {
+        // 3. Quando o Future completa, atualiza o estado com os detalhes
+        if (mounted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              setState(() {
+                _ticketDetail = detail;
+                _updatePartialAmount(detail.total);
+              });
+            }
+          });
+        }
+        return detail;
       });
-    }
-    return detail;
+    });
+  }
+
+  // Mantido para compatibilidade, apenas retorna o Future.
+  Future<TicketDetail> _fetchTicketDetails(Ticket ticket) async {
+    return await widget.apiService.fetchTicketDetails(ticket);
   }
 
   void _updatePartialAmount(double total) {
@@ -58,6 +80,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   void _handlePaymentProcessing() async {
+    // Lógica de processamento de pagamento...
     if (_selectedTicket == null || _ticketDetail == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -137,7 +160,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             return DropdownMenuItem(
               value: ticket,
               child: Text(
-                'Mesa ${ticket.number} - Total: R\$ ${ticket.total.toStringAsFixed(2)}',
+                'Comanda: ${ticket.number} - Total: R\$ ${ticket.total.toStringAsFixed(2)}',
               ),
             );
           }).toList(),
@@ -151,19 +174,25 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   _currentStep = 0;
                 }
               });
+              // ⭐️ Inicia a requisição ao mudar o Dropdown
+              _startFetchingDetails(newValue);
             }
           },
           hint: const Text('Selecione uma comanda'),
         ),
-        if (_selectedTicket != null) _buildTicketDetailsLoader(),
+        _buildTicketDetailsLoader(),
       ],
     );
   }
 
+  // ⭐️ CORREÇÃO: FutureBuilder agora usa _ticketDetailFuture
   Widget _buildTicketDetailsLoader() {
-    // ⭐️ ALTERADO: Passando o objeto 'Ticket' inteiro para _fetchTicketDetails
+    if (_ticketDetailFuture == null) {
+      return const SizedBox.shrink(); // Nada para carregar ainda
+    }
+
     return FutureBuilder<TicketDetail>(
-      future: _fetchTicketDetails(_selectedTicket!),
+      future: _ticketDetailFuture, // Usa o Future armazenado no estado
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Padding(
@@ -182,8 +211,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
           );
         }
 
-        if (snapshot.hasData) {
-          return _buildTicketDetailConfirmation(snapshot.data!);
+        // Usa _ticketDetail, que foi preenchido no .then()
+        if (snapshot.hasData && _ticketDetail != null) {
+          return _buildTicketDetailConfirmation(_ticketDetail!); // ⭐️ Método corrigido
         }
 
         return const SizedBox.shrink();
@@ -191,6 +221,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
+  // ⭐️ Método RESTAURADO/CORRIGIDO: _buildTicketDetailConfirmation
   Widget _buildTicketDetailConfirmation(TicketDetail detail) {
     return Card(
       margin: const EdgeInsets.only(top: 20),
@@ -204,7 +235,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Mesa ${detail.number}',
+                  'Comanda ${detail.number}',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 Text(
@@ -262,6 +293,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
+  // ⭐️ Método RESTAURADO: _buildStep2PaymentOptions
   Widget _buildStep2PaymentOptions() {
     if (_ticketDetail == null) {
       return const Center(child: Text('Carregando detalhes da comanda...'));
@@ -271,7 +303,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Comanda: Mesa ${_ticketDetail!.number} | Total: R\$ ${_ticketDetail!.total.toStringAsFixed(2)}',
+          'Comanda: ${_ticketDetail!.number} | Total: R\$ ${_ticketDetail!.total.toStringAsFixed(2)}',
           style: Theme.of(context).textTheme.titleLarge!.copyWith(
             fontSize: 18,
             color: Theme.of(context).colorScheme.secondary,
@@ -318,6 +350,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
+  // ⭐️ Método RESTAURADO: _buildSteps
   List<Step> _buildSteps(List<Ticket> availableTickets) {
     return [
       Step(
@@ -337,6 +370,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     ];
   }
 
+  // ⭐️ Método RESTAURADO: _onStepContinue
   void _onStepContinue() {
     if (_currentStep == 0) {
       if (_selectedTicket != null && _ticketDetail != null) {
@@ -353,6 +387,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     }
   }
 
+  // ⭐️ Método RESTAURADO: _onStepCancel
   void _onStepCancel() {
     if (_currentStep > 0) {
       setState(() => _currentStep -= 1);
@@ -386,17 +421,28 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
           final availableTickets = snapshot.data!;
 
-          if (widget.preSelectedTicket != null &&
-              _selectedTicket == null &&
-              availableTickets.isNotEmpty) {
-            final initialTicket = availableTickets.firstWhere(
+          Ticket? ticketToSelect;
+
+          if (widget.preSelectedTicket != null) {
+            ticketToSelect = availableTickets.firstWhere(
                   (t) => t.id == widget.preSelectedTicket!.id,
               orElse: () => availableTickets.first,
             );
+          } else if (_selectedTicket == null && availableTickets.isNotEmpty) {
+            ticketToSelect = availableTickets.first;
+          }
 
+          // Se encontramos um ticket para selecionar E ele é diferente do ticket atual,
+          // fazemos o setState e iniciamos a busca.
+          if (ticketToSelect != null && _selectedTicket != ticketToSelect) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted && _selectedTicket == null) {
-                setState(() => _selectedTicket = initialTicket);
+              if (mounted) {
+                setState(() {
+                  _selectedTicket = ticketToSelect;
+                  _ticketDetail = null; // Limpa o detalhe antigo
+                });
+                // ⭐️ CORREÇÃO: Checa se é nulo antes de passar para _startFetchingDetails
+                _startFetchingDetails(ticketToSelect!);
               }
             });
           }
@@ -404,9 +450,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
           return Stepper(
             type: StepperType.vertical,
             currentStep: _currentStep,
-            onStepContinue: _onStepContinue,
-            onStepCancel: _onStepCancel,
-            steps: _buildSteps(availableTickets),
+            onStepContinue: _onStepContinue, // ⭐️ Método corrigido
+            onStepCancel: _onStepCancel,     // ⭐️ Método corrigido
+            steps: _buildSteps(availableTickets), // ⭐️ Método corrigido
             controlsBuilder: (context, details) {
               return Padding(
                 padding: const EdgeInsets.only(top: 20.0),
@@ -414,13 +460,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   children: <Widget>[
                     ElevatedButton.icon(
                       onPressed: details.onStepContinue,
-                      // START FIX: Updated Icons for a cleaner, more modern look
-                      // icon: Icon(
-                      //   details.currentStep == 0
-                      //       ? Icons.chevron_right_rounded // Cleaner arrow for next step
-                      //       : Icons.check_circle, // Solid checkmark for final action
-                      // ),
-                      // END FIX
+
                       label: Text(
                         details.currentStep == 0
                             ? '    Confirmar    '
