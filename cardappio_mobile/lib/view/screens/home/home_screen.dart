@@ -2,51 +2,31 @@ import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart' as caro;
 import '../../../data/api_service.dart';
 import '../../../model/menu.dart';
-
-// Importante: Se o erro 'CarouselController' persistir, use o hide:
-// import 'package:flutter/material.dart' hide CarouselController;
+import 'package:cached_network_image/cached_network_image.dart'; // Import necessário para URLs
 
 class MenuItem {
   final String name;
-  final String imageUrl;
+  final String imageUrl; // URL ou Caminho do Asset
   final String price;
 
   MenuItem({required this.name, required this.imageUrl, required this.price});
 }
 
+// ATUALIZE ESTAS LISTAS COM AS IMAGENS REAIS DO SEU PROJETO!
 final List<MenuItem> promoItemsList = [
-  // Lembre-se de mudar 'lib/images/' para 'assets/images/' se você seguiu o padrão de assets.
-  MenuItem(
-      name: 'Prato Feito Executivo',
-      imageUrl: 'lib/images/pf.jpeg',
-      price: 'R\$ 38,90'),
-  MenuItem(
-      name: 'Bife Grelhado com Tomate Cereja',
-      imageUrl: 'lib/images/prato.jpeg',
-      price: 'R\$ 54,99'),
-  MenuItem(
-      name: 'Camarão Crocante ao Molho',
-      imageUrl: 'lib/images/camarao.jpeg',
-      price: 'R\$ 68,50'),
-  MenuItem(
-      name: 'Macarrão com Frutos do Mar',
-      imageUrl: 'lib/images/macarrao.jpeg',
-      price: 'R\$ 59,90'),
+  // ESTE USA URL (Image.network)
+  MenuItem(name: 'Prato Feito Executivo', imageUrl: 'https://blog-parceiros.ifood.com.br/wp-content/uploads/2022/08/prato-executivo.jpg', price: 'R\$ 38,90'),
+  // ESTES USAM ASSETS (Image.asset)
+  MenuItem(name: 'Bife Grelhado', imageUrl: 'https://static.vecteezy.com/ti/fotos-gratis/p2/3723619-grelhado-fatiado-cap-alcatra-bife-com-dois-copos-de-cerveja-na-madeira-tabua-de-marmore-carne-bife-picanha-brasileira-foto.jpg', price: 'R\$ 54,99'),
+  MenuItem(name: 'Camarão Crocante', imageUrl: 'https://www.comidaereceitas.com.br/img/sizeswp/1200x675/2020/02/camarao_frito.jpg', price: 'R\$ 68,50'),
+  MenuItem(name: 'Macarrão Frutos do Mar', imageUrl: 'https://www.buaizalimentos.com.br/uploads/receitas/Foto_agenda_2021___massa_frutos_do_mar_74079755_XL__002.jpg', price: 'R\$ 59,90'),
 ];
 
 final List<MenuItem> houseRecommendations = [
-  MenuItem(
-      name: 'Carne Grelhada com Batata',
-      imageUrl: 'lib/images/prato.jpeg',
-      price: 'R\$ 47,99'),
-  MenuItem(
-      name: 'Carne Grelhada com Batata',
-      imageUrl: 'lib/images/prato.jpeg',
-      price: 'R\$ 47,99'),
-  MenuItem(
-      name: 'Carne Grelhada com Batata',
-      imageUrl: 'lib/images/prato.jpeg',
-      price: 'R\$ 47,99'),
+  MenuItem(name: 'Carne Grelhada c/ Batata', imageUrl: 'https://i.panelinha.com.br/i1/bk-2979-carne-de-panela-com-cenoura-e-batata-na-pressao.webp', price: 'R\$ 47,99'),
+  MenuItem(name: 'Salmão Grelhado', imageUrl: 'https://www.comidaereceitas.com.br/wp-content/uploads/2020/03/Salmao-assado-no-forno-freepik-780x520.jpg', price: 'R\$ 75,00'),
+  MenuItem(name: 'Tiramisù Italiano', imageUrl: 'https://cdn.casaeculinaria.com/wp-content/uploads/2023/03/15114930/Tiramisu.jpg', price: 'R\$ 22,50'),
+  MenuItem(name: 'Sopa Cremosa', imageUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRlR9ibYhTdIfgWGiiQNUpkS5uO1Ya1XlaK9g&s', price: 'R\$ 35,00'),
 ];
 
 class HomeScreen extends StatefulWidget {
@@ -70,11 +50,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
   }
 
   void _handleQuickOrder(BuildContext context) async {
@@ -113,182 +88,139 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Widget _buildPromotionalCarouselItem(BuildContext context, MenuItem item, int index) {
+  // --- WIDGET AUXILIAR: CARREGADOR CONDICIONAL DE IMAGEM ---
+  Widget _buildConditionalImage(String imageUrl) {
+    // 1. LÓGICA DE CARREGAMENTO CONDICIONAL
+    final bool isNetworkImage = imageUrl.startsWith('http');
 
-    bool active = index == _activePage;
-    double marginVertical = active ? 10 : 20;
+    if (isNetworkImage) {
+      // Se for URL, use CachedNetworkImage (melhor performance)
+      return CachedNetworkImage(
+        imageUrl: imageUrl,
+        width: double.infinity,
+        height: double.infinity,
+        fit: BoxFit.cover,
+        placeholder: (context, url) => Container(
+            color: Colors.grey.shade900,
+            alignment: Alignment.center,
+            child: const CircularProgressIndicator(color: Colors.white)),
+        errorWidget: (context, url, error) => Container(
+          color: Colors.grey.shade800,
+          alignment: Alignment.center,
+          child: const Icon(Icons.signal_wifi_off, color: Colors.white70, size: 50),
+        ),
+      );
+    } else {
+      // Se for Asset, use Image.asset
+      return Image.asset(
+        imageUrl,
+        width: double.infinity,
+        height: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => Container(
+          color: Colors.grey.shade800,
+          alignment: Alignment.center,
+          child: const Icon(Icons.broken_image, color: Colors.white70, size: 50),
+        ),
+      );
+    }
+  }
+
+
+  // --- WIDGET 1: CARROSSEL PROMO (DESIGN DE DESTAQUE) ---
+  Widget _buildPromotionalCarouselItem(BuildContext context, MenuItem item, int index) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 5, vertical: marginVertical),
-      child: Stack(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.asset(
-              item.imageUrl,
-              width: double.infinity,
-              height: double.infinity,
-              fit: BoxFit.cover,
-              alignment: Alignment.center,
-              errorBuilder: (context, error, stackTrace) => Container(
-                color: const Color.fromARGB(255, 182, 13, 13),
-                alignment: Alignment.center,
-                child: const Text(
-                  'Erro de Imagem',
-                  style: TextStyle(color: Colors.white, fontSize: 18),
-                ),
-              ),
-            ),
+      // Margens e bordas zeradas para Full-Width
+      margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(0),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
           ),
-
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withOpacity(0.0),
-                    Colors.black.withOpacity(0.2),
-                    Colors.black.withOpacity(0.5),
-                    Colors.black.withOpacity(0.7),
-                  ],
-                  stops: const [0.0, 0.5, 0.8, 1.0],
-                ),
-              ),
-            ),
-          ),
-
-          Positioned(
-            top: 16,
-            left: 16,
-            child: Text(
-              item.name,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  shadows: [
-                    Shadow(offset: Offset(2, 2), blurRadius: 4.0, color: Colors.black)
-                  ]
-              ),
-            ),
-          ),
-
-          Positioned(
-            bottom: 10,
-            left: 16,
-            child: Text(
-              item.price,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  shadows: [
-                    Shadow(offset: Offset(1, 1), blurRadius: 3.0, color: Colors.black54)
-                  ]
-              ),
-            ),
-          ),
-
-          Positioned(
-            bottom: 16,
-            right: 16,
-            child: ElevatedButton(
-              onPressed: () => _handleQuickOrder(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF51CF66),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(5.0),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-              ),
-              child: const Text('Adicionar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ),
-          ),
-
-
         ],
       ),
-    );
-  }
-
-  List<Widget> _buildPageIndicators() {
-    return List<Widget>.generate(promoItemsList.length, (index) {
-      return Container(
-        margin: const EdgeInsets.symmetric(horizontal: 4.0),
-        width: _activePage == index ? 10.0 : 8.0,
-        height: _activePage == index ? 10.0 : 8.0,
-        decoration: BoxDecoration(
-            color: _activePage == index ? Colors.black : Colors.black.withOpacity(0.6),
-            shape: BoxShape.circle),
-      );
-    });
-  }
-
-  Widget _buildRecommendationCard(BuildContext context, MenuItem item, Function onTap, double itemWidth) {
-    const double cardSpacing = 20.0;
-
-    return Padding(
-      padding: const EdgeInsets.only(right: cardSpacing),
-      child: Container(
-        width: itemWidth,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 5,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(0),
+        child: Stack(
           children: [
+            // UTILIZAÇÃO DO NOVO WIDGET CONDICIONAL
+            _buildConditionalImage(item.imageUrl),
 
-            Expanded(
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                child: Image.asset(
-                  item.imageUrl,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    color: Colors.grey.shade400,
-                    alignment: Alignment.center,
+            // Gradiente Escuro (Overlay para Texto)
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withOpacity(0.0),
+                      Colors.black.withOpacity(0.6),
+                      Colors.black.withOpacity(0.8),
+                    ],
+                    stops: const [0.4, 0.8, 1.0],
                   ),
                 ),
               ),
             ),
 
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // Detalhes do Item (Texto e Botão)
+            Positioned(
+              bottom: 16,
+              left: 16,
+              right: 16,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Text(
-                      item.name,
-                      style: const TextStyle(
-                        color: Colors.black,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
                   Text(
-                    item.price,
+                    item.name,
                     style: const TextStyle(
-                      color: Color(0xFF51CF66),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        shadows: [
+                          Shadow(offset: Offset(1, 1), blurRadius: 3.0, color: Colors.black)
+                        ]),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        item.price,
+                        style: TextStyle(
+                          color: colorScheme.secondary,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          shadows: const [
+                            Shadow(offset: Offset(1, 1), blurRadius: 2.0, color: Colors.black54)
+                          ],
+                        ),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: () => _handleQuickOrder(context),
+                        icon: const Icon(Icons.add_shopping_cart, size: 20),
+                        label: const Text('Pedir Agora', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: colorScheme.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8.0),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          elevation: 8,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -299,23 +231,119 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // --- WIDGET 2: CARD DE RECOMENDAÇÃO (LISTA HORIZONTAL) ---
+  Widget _buildRecommendationCard(BuildContext context, MenuItem item, Function onTap, double itemWidth) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 16.0),
+      child: InkWell(
+        onTap: () => onTap(),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: itemWidth,
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Imagem
+              Expanded(
+                flex: 3,
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                  // UTILIZAÇÃO DO NOVO WIDGET CONDICIONAL
+                  child: _buildConditionalImage(item.imageUrl),
+                ),
+              ),
+
+              // Detalhes do Produto
+              Expanded(
+                flex: 2,
+                child: Padding(
+                  padding: const EdgeInsets.all(10.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.name,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            item.price,
+                            style: TextStyle(
+                              color: colorScheme.secondary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          Icon(
+                            Icons.arrow_circle_right,
+                            color: colorScheme.primary,
+                            size: 28,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- WIDGET 3: INDICADORES DE PÁGINA (Pílulas) ---
+  List<Widget> _buildPageIndicators() {
+    final colorScheme = Theme.of(context).colorScheme;
+    return List<Widget>.generate(promoItemsList.length, (index) {
+      return AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          margin: const EdgeInsets.symmetric(horizontal: 4.0),
+          width: _activePage == index ? 24.0 : 8.0,
+          height: 8.0,
+          decoration: BoxDecoration(
+              color: _activePage == index ? colorScheme.primary : colorScheme.onSurface.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(4))
+      );});
+  }
+
 
   @override
   Widget build(BuildContext context) {
-    const double horizontalPadding = 50.0;
-    const double itemSpacing = 20.0;
-    const int itemsInView = 3;
-    final double screenWidth = MediaQuery.of(context).size.width;
+    const double horizontalPadding = 16.0;
+    const double itemSpacing = 16.0;
+    final double screenHeight = MediaQuery.of(context).size.height;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
+    // ⭐️ REVERTENDO CORREÇÃO ANTERIOR: Remove o Padding de 8.0
     return Column(
       children: [
-        const SizedBox(height: 10),
 
-        // --- CARROSSEL ---
+        // --- SEÇÃO 1: CARROSSEL PROMO (Altura Responsiva) ---
         SizedBox(
-          // Altura do carrossel (ajustado para ser ligeiramente menor, mantendo 0.55 * altura total)
-          height: MediaQuery.of(context).size.height * 0.55,
-          width: screenWidth,
+          height: screenHeight * 0.55,
           child: Column(
             children: [
               Expanded(
@@ -324,21 +352,20 @@ class _HomeScreenState extends State<HomeScreen> {
                   itemCount: promoItemsList.length,
                   options: caro.CarouselOptions(
                     height: double.infinity,
-                    viewportFraction: 0.7,
+                    // 100% da largura do viewport
+                    viewportFraction: 1.0,
                     initialPage: 0,
                     enableInfiniteScroll: true,
-                    enlargeCenterPage: true,
-
+                    // Remove o enlargeCenterPage para Full-Width
+                    enlargeCenterPage: false,
                     autoPlay: true,
-                    autoPlayInterval: const Duration(seconds: 2),
+                    autoPlayInterval: const Duration(seconds: 4),
                     autoPlayAnimationDuration: const Duration(milliseconds: 800),
-
                     onPageChanged: (index, reason) {
                       setState(() {
                         _activePage = index;
                       });
                     },
-                    enlargeFactor: 0.3,
                   ),
                   itemBuilder: (context, index, realIndex) {
                     final item = promoItemsList[index];
@@ -347,53 +374,64 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
 
-              Padding(
-                padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: _buildPageIndicators(),
+              // ⭐️ CORREÇÃO: Envolver o Padding do contador em um Container opaco e preto
+              // Isso garante que ele cubra a sombra do menu lateral, mesmo sem Padding externo.
+              Container(
+                color: colorScheme.background, // Fundo opaco para cobrir a sombra
+                width: double.infinity, // Ocupa toda a largura
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 10.0, bottom: 20.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: _buildPageIndicators(),
+                  ),
                 ),
               ),
             ],
           ),
         ),
 
-        const SizedBox(height: 10),
-
-        // --- RECOMENDAÇÕES DA CASA (Expandido para resolver Overflow) ---
+        // --- SEÇÃO 2: RECOMENDAÇÕES DA CASA ---
         Expanded(
-          // O Expanded garante que esta seção ocupe o espaço vertical restante.
           child: Container(
-            color: const Color(0xff000000),
-            width: double.infinity,
+            // A cor de fundo opaca (colorScheme.background) da Home já deve cobrir a sombra
+            color: colorScheme.background,
+            padding: const EdgeInsets.only(bottom: 20.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(left: horizontalPadding, top: 5.0, bottom: 12),
-                  child: const Text(
-                    'Recomendações da Casa', // Adicionei o título de volta para clareza
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 25,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  padding: const EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 20.0),
+                  child: Row( // ⭐️ Novo Row para o Ícone e Título
+                    children: [
+                      // ⭐️ Ícone de Destaque
+                      Icon(
+                        Icons.flash_on_rounded, // Ícone de promoção/velocidade
+                        color: colorScheme.primary, // Cor principal para forte destaque
+                        size: 30,
+                      ),
+                      const SizedBox(width: 8),
+                      // ⭐️ Título Profissional de Promoção
+                      Text(
+                        'OFERTAS ESPECIAIS', // Texto em caixa alta para ênfase
+                        style: theme.textTheme.headlineSmall!.copyWith(
+                          fontWeight: FontWeight.w900, // Extremo negrito
+                          color: colorScheme.primary, // Cor do texto igual à cor principal
+                          letterSpacing: 0.8, // Espaçamento entre letras (profissional)
+                        ),
+                      ),
+                    ],
                   ),
                 ),
 
-                // ✅ CORREÇÃO APLICADA: O ListView agora está dentro de um Expanded
-                // para garantir que ele ocupe apenas o espaço vertical restante,
-                // eliminando o overflow de 41px.
+                // Lista Horizontal
                 Expanded(
                   child: LayoutBuilder(
                       builder: (context, constraints) {
-                        // O LayoutBuilder não precisa mais de altura fixa,
-                        // mas precisa calcular a largura do item.
+                        const double visibleCards = 2.2;
                         final availableWidth = constraints.maxWidth - (horizontalPadding * 2);
-
-                        final totalSpacing = itemSpacing * (itemsInView - 1);
-
-                        final itemWidth = (availableWidth - totalSpacing) / itemsInView;
+                        final totalSpacing = itemSpacing * (visibleCards - 1);
+                        final itemWidth = (availableWidth - totalSpacing) / visibleCards;
 
                         return ListView.builder(
                           padding: const EdgeInsets.symmetric(horizontal: horizontalPadding),
@@ -405,7 +443,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             return _buildRecommendationCard(
                                 context,
                                 item,
-                                    () => print('Item ${item.name} clicado'),
+                                    () => _handleQuickOrder(context),
                                 itemWidth
                             );
                           },

@@ -196,7 +196,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         if (_productVariables.isNotEmpty) ...[
           const Divider(height: 30),
           Text(
-            '1. ${_productVariables.first.name} (Obrigatório)',
+            '${_productVariables.first.name} (Obrigatório)',
             style: Theme.of(context)
                 .textTheme
                 .titleLarge!
@@ -232,7 +232,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       children: [
         if (_productAddOns.isNotEmpty) ...[
           Text(
-            '2. Adicionais (Opcional)',
+            'Adicionais (Opcional)',
             style: Theme.of(context)
                 .textTheme
                 .titleLarge!
@@ -292,13 +292,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '3. Quantidade do Item',
+          'Quantidade do Item',
           style:
           Theme.of(context).textTheme.titleLarge!.copyWith(fontSize: 20),
         ),
         const SizedBox(height: 15),
         Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.start, // ⭐️ CORRIGIDO: Alinha ao início
           children: [
             IconButton(
               icon: const Icon(Icons.remove_circle_outline, size: 30),
@@ -321,7 +321,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         ),
         const Divider(height: 40),
         Text(
-          '4. Observações (Opcional)',
+          'Observações (Opcional)',
           style:
           Theme.of(context).textTheme.titleLarge!.copyWith(fontSize: 20),
         ),

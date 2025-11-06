@@ -221,7 +221,7 @@ class _MainNavigatorState extends State<MainNavigator>
     if (_categories.isNotEmpty && _selectedCategoryName.isNotEmpty) {
       final selectedCategory = _categories.firstWhere(
             (cat) => cat.name == _selectedCategoryName,
-        orElse: () => Category(id: '', name: ''),
+        orElse: () => Category(id: '', name: '', image: ''),
       );
       selectedCategoryId = selectedCategory.id;
     }

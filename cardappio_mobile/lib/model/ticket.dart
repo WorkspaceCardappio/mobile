@@ -13,6 +13,19 @@ class Ticket {
     required this.createdAt,
   });
 
+  // 🛠️ CORREÇÃO DE BUG DO DROPDOWN: Sobrescrevendo == e hashCode
+  // Isso garante que o Flutter considere instâncias de Ticket iguais se os IDs forem iguais,
+  // resolvendo o "Failed assertion" no DropdownButtonFormField.
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+
+    return other is Ticket && other.id == id;
+  }
+
+  @override
+  int get hashCode => id.hashCode;
+
   factory Ticket.fromJson(Map<String, dynamic> json) {
     String id;
 
@@ -86,5 +99,9 @@ class TicketDetail extends Ticket {
       total: total,
       items: items,
     );
+  }
+
+  double get calculatedTotal {
+    return items.fold(0.0, (sum, item) => sum + item.subtotal);
   }
 }

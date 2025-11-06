@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cardappio_mobile/model/menu.dart';
 import 'package:cardappio_mobile/model/product.dart';
 import '../../../data/api_service.dart';
+import 'package:cached_network_image/cached_network_image.dart'; // <<< Import necessário
 
 class MenuDetailScreen extends StatelessWidget {
   final Menu menu;
@@ -22,6 +23,7 @@ class MenuDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // ... (o build method permanece o mesmo)
     return Padding(
       padding: const EdgeInsets.all(20.0),
       child: Column(
@@ -81,6 +83,8 @@ class MenuDetailScreen extends StatelessWidget {
   }
 
   Widget _buildProductCard(Product product, BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -90,20 +94,59 @@ class MenuDetailScreen extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start, // Alinha itens do Row ao topo
             children: [
+              // --------------------------------------------------------
+              // ALTERAÇÃO: Container de Imagem para 80x80
+              // --------------------------------------------------------
               Container(
-                width: 60,
-                height: 60,
+                width: 80, // <<< AUMENTADO DE 60 para 80
+                height: 80, // <<< AUMENTADO DE 60 para 80
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-                child: Icon(
-                  Icons.restaurant_menu,
-                  color: Theme.of(context).colorScheme.primary,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: CachedNetworkImage(
+                    imageUrl: product.image,
+                    fit: BoxFit.cover,
+
+                    placeholder: (context, url) => Container(
+                      color: colorScheme.surfaceVariant,
+                      child: Center(
+                        child: SizedBox(
+                          width: 30, // Loader maior
+                          height: 30,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5, // Loader mais robusto
+                            color: colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    errorWidget: (context, url, error) => Container(
+                      color: Colors.grey.shade200,
+                      child: Icon(
+                        Icons.image_not_supported,
+                        color: Colors.grey,
+                        size: 40, // Ícone de erro maior
+                      ),
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(width: 16),
+              // --------------------------------------------------------
+
+              const SizedBox(width: 20), // <<< AUMENTADO O ESPAÇAMENTO DE 16 para 20
+
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -135,13 +178,13 @@ class MenuDetailScreen extends StatelessWidget {
                     style: TextStyle(
                       fontWeight: FontWeight.w900,
                       fontSize: 18,
-                      color: Theme.of(context).colorScheme.secondary,
+                      color: colorScheme.secondary,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Icon(
                     Icons.add_circle,
-                    color: Theme.of(context).colorScheme.primary,
+                    color: colorScheme.primary,
                     size: 30,
                   ),
                 ],
