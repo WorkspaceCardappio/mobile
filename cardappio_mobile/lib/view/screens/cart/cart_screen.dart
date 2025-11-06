@@ -63,7 +63,7 @@ class CartScreen extends StatelessWidget {
                       const SizedBox(height: 4), // Pequeno espaço para melhor alinhamento
                       IconButton(
                         icon: const Icon(Icons.delete_outline, color: Colors.red, size: 24),
-                        onPressed: () => onRemoveItem(item.product.id),
+                        onPressed: () => onRemoveItem(item.product.idProductItem),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
                         tooltip: 'Remover Item',
