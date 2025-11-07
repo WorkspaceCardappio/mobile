@@ -1,44 +1,31 @@
-class TicketItem {
+// lib/model/product_order.dart (Sugestão: Crie este arquivo, ou renomeie o TicketItem)
 
+// Renomeado para ProductOrder para representar o item de linha (produto)
+// dentro do JSON de orders, antes de ser agregado.
+class ProductOrder {
+  // ID do item de linha, que no seu JSON é o ID do Pedido (Order ID)
   final String id;
-  final String productName;
+  final String name; // Nome do produto
   final int quantity;
-  final double unitPrice;
+  final double price; // Preço unitário
 
-  double get subtotal => unitPrice * quantity;
+  double get total => price * quantity;
 
-  TicketItem({
+  ProductOrder({
     required this.id,
-    required this.productName,
+    required this.name,
     required this.quantity,
-    required this.unitPrice
+    required this.price
   });
 
-  factory TicketItem.fromJson(Map<String, dynamic> json) {
-    // Este factory já está tratando nulos com 'as num? ?? 0' e 'as num? ?? 0.0'
-    return TicketItem(
+  factory ProductOrder.fromJson(Map<String, dynamic> json) {
+    return ProductOrder(
       id: json['id'] as String? ?? 'mock_order_id',
-      productName: json['productName'] as String? ?? 'Item Desconhecido',
-      quantity: json['quantity'] as int? ?? 0,
-      unitPrice: (json['unitPrice'] as num? ?? 0.0).toDouble(),
-    );
-  }
-
-  factory TicketItem.fromBackendFlutterTicketJson(Map<String, dynamic> json) {
-    // A chave 'id' deve ser tratada como String, mas os numéricos precisam de cuidado.
-    final String orderId = json['id'] as String? ?? ''; // Protegendo o ID de ser nulo também.
-
-    // 🚀 CORREÇÃO CRÍTICA: Usar 'as num? ?? 0' para evitar a falha 'Null is not a subtype of num'.
-
-    return TicketItem(
-      id: orderId,
-      productName: json['name'] as String? ?? 'Item Desconhecido',
-
-      // ⭐️ CORREÇÃO 1: Quantity - Se for nulo, usa 0, depois converte para int.
+      name: json['name'] as String? ?? 'Item Desconhecido',
+      // ⭐️ Conversão segura
       quantity: (json['quantity'] as num? ?? 0).toInt(),
-
-      // ⭐️ CORREÇÃO 2: unitPrice - Se for nulo, usa 0.0, depois converte para double.
-      unitPrice: (json['price'] as num? ?? 0.0).toDouble(),
+      // ⭐️ Conversão segura
+      price: (json['price'] as num? ?? 0.0).toDouble(),
     );
   }
 }

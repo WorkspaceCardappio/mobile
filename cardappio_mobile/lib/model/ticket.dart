@@ -1,4 +1,55 @@
-import 'ticket_item.dart';
+import 'package:flutter/foundation.dart';
+
+// ====================================================================
+// ESTRUTURAS AUXILIARES PARA AGRUPAMENTO POR PEDIDO (ORDER)
+// (Mantidas as correções anteriores)
+// ====================================================================
+
+@immutable
+class ProductOrder {
+  final String id;
+  final String name;
+  final double price;
+  final int quantity;
+
+  ProductOrder({
+    required this.id,
+    required this.name,
+    required this.price,
+    required this.quantity,
+  });
+
+  factory ProductOrder.fromJson(Map<String, dynamic> json) {
+    return ProductOrder(
+      id: json['id'] as String? ?? 'order_id_unknown',
+      name: json['name'] as String? ?? 'Item Desconhecido',
+      price: (json['price'] as num? ?? 0.0).toDouble(),
+      quantity: (json['quantity'] as num? ?? 0).toInt(),
+    );
+  }
+
+  double get total => price * quantity;
+}
+
+class AggregatedOrder {
+  final String orderId;
+  final List<ProductOrder> items;
+
+  AggregatedOrder({
+    required this.orderId,
+    required this.items,
+  });
+
+  double get subtotal => items.fold(0.0, (sum, item) => sum + item.total);
+
+  String get summary {
+    return items.map((item) => '${item.quantity}x ${item.name}').join(', ');
+  }
+}
+
+// ====================================================================
+// CLASSE BASE: TICKET
+// ====================================================================
 
 class Ticket {
   final String id;
@@ -13,11 +64,9 @@ class Ticket {
     required this.createdAt,
   });
 
-  // 🛠️ CORREÇÃO DE BUG DO DROPDOWN: Sobrescrevendo == e hashCode
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-
     return other is Ticket && other.id == id;
   }
 
@@ -26,16 +75,13 @@ class Ticket {
 
   factory Ticket.fromJson(Map<String, dynamic> json) {
     String id;
-
     if (json.containsKey('id')) {
       id = json['id'] as String;
     } else {
       final String selfLink = json['_links']?['self']?['href'] ?? '';
       id = selfLink.isNotEmpty ? selfLink.substring(selfLink.lastIndexOf('/') + 1) : '';
     }
-
     final int ticketNumber = json['number'] ?? json['tableNumber'] ?? 0;
-
     final DateTime createdAt = DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now();
 
     return Ticket(
@@ -47,65 +93,72 @@ class Ticket {
   }
 }
 
+// ====================================================================
+// CLASSE DE DETALHE: TICKETDETAIL (CORRIGIDA)
+// ====================================================================
+
 class TicketDetail extends Ticket {
-  final List<TicketItem> items;
+  final List<AggregatedOrder> orders;
 
   TicketDetail({
     required super.id,
     required super.number,
-    required super.total,
+    // ❌ REMOVIDO: O 'required super.total' foi removido
     required super.createdAt,
-    required this.items,
-  });
+    required this.orders,
+  }) : super(
+    // ⭐️ CORREÇÃO: total é passado APENAS AQUI, calculado.
+    total: orders.fold(0.0, (sum, order) => sum + order.subtotal),
+  );
 
+  @override
+  double get calculatedTotal {
+    return orders.fold(0.0, (sum, order) => sum + order.subtotal);
+  }
+
+  // Mantendo este factory (agora sem dependência de TicketItem)
   factory TicketDetail.fromJson(Map<String, dynamic> json) {
     final baseTicket = Ticket.fromJson(json);
-
-    final List<dynamic> itemsJson = json['_embedded']?['items'] ?? [];
-    final List<TicketItem> items = itemsJson
-        .map((itemJson) => TicketItem.fromJson(itemJson as Map<String, dynamic>))
-        .toList();
-
-    double calculatedTotal = items.fold(0.0, (sum, item) => sum + item.subtotal);
 
     return TicketDetail(
       id: baseTicket.id,
       number: baseTicket.number,
-      total: (json['total'] as num? ?? calculatedTotal).toDouble(),
       createdAt: baseTicket.createdAt,
-      items: items,
+      orders: [], // Retorna orders vazio
     );
   }
 
+  // ⭐️ FACTORY USADO PELA API (Contém a lógica de agregação)
   factory TicketDetail.fromBackendFlutterTicketJson({
     required Map<String, dynamic> json,
     required Ticket baseTicket,
   }) {
     final List<dynamic> ordersJson = json['orders'] ?? [];
+    final List<ProductOrder> allItems =
+    ordersJson.map((item) => ProductOrder.fromJson(item)).toList();
 
-    final List<TicketItem> items = ordersJson
-        .map((itemJson) =>
-        TicketItem.fromBackendFlutterTicketJson(itemJson as Map<String, dynamic>))
+    final Map<String, List<ProductOrder>> groupedByOrderId = {};
+    for (var item in allItems) {
+      final key = item.id;
+      if (!groupedByOrderId.containsKey(key)) {
+        groupedByOrderId[key] = [];
+      }
+      groupedByOrderId[key]!.add(item);
+    }
+
+    final List<AggregatedOrder> aggregatedOrders = groupedByOrderId.entries
+        .map((entry) => AggregatedOrder(
+      orderId: entry.key,
+      items: entry.value,
+    ))
         .toList();
-
-    // ⭐️ CORREÇÃO CRÍTICA: Calcula o total a partir dos itens (pedidos) carregados,
-    // pois o campo 'total' não está mais vindo do JSON da API.
-    final double calculatedTotal = items.fold(0.0, (sum, item) => sum + item.subtotal);
-
-    // ❌ REMOVIDO: final double total = (json['total'] as num).toDouble();
-    // Essa linha causava o erro Null != num.
 
     return TicketDetail(
       id: baseTicket.id,
       number: baseTicket.number,
       createdAt: baseTicket.createdAt,
-      total: calculatedTotal, // ⭐️ Usa o total calculado
-      items: items,
+      orders: aggregatedOrders,
+      // O 'total' é calculado e passado automaticamente via construtor acima!
     );
-  }
-
-  // O getter permanece, mas o total é definido no construtor com o valor calculado.
-  double get calculatedTotal {
-    return items.fold(0.0, (sum, item) => sum + item.subtotal);
   }
 }

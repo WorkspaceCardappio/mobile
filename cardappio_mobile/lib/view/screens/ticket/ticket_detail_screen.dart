@@ -3,8 +3,7 @@ import 'package:intl/intl.dart';
 import '../../../data/api_service.dart';
 import '../../../model/ticket.dart';
 import '../../common/split_ticket_dialog.dart';
-
-// ⚠️ Assumindo que você tem uma classe TicketDetail definida
+import '../../../model/ticket_item.dart' hide ProductOrder; // Import necessário para ProductOrder
 
 class TicketDetailScreen extends StatelessWidget {
   final Ticket ticket;
@@ -18,7 +17,8 @@ class TicketDetailScreen extends StatelessWidget {
     required this.onNavigateToPayment,
   });
 
-  void _handleSplitTicket(BuildContext context, dynamic detail) async { // Usando dynamic para evitar erro de tipo na função
+  // ⭐️ CORREÇÃO 1: Tipagem do detail corrigida para TicketDetail
+  void _handleSplitTicket(BuildContext context, TicketDetail detail) async {
     final bool? splitSuccess = await showDialog<bool>(
       context: context,
       builder: (context) => SplitTicketDialog(
@@ -36,21 +36,16 @@ class TicketDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // ⭐️ CORREÇÃO 2: Tipar o FutureBuilder com o tipo esperado (TicketDetail)
     return Scaffold(
-      // ⭐️ CORREÇÃO 1: Fundo do Scaffold branco para integração do Card/Container
       backgroundColor: Theme.of(context).cardColor,
 
       appBar: AppBar(
-        // ⭐️ CORREÇÃO 2: Título simplificado e centralizado
-        // title: Text(
-        //   'Comanda ${ticket.number} (Mesa ${ticket.number})',
-        //   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-        // ),
-        centerTitle: true, // Centraliza o título no AppBar
-        elevation: 0, // Remover sombra do AppBar para um visual mais flat
-        backgroundColor: Theme.of(context).cardColor, // Fundo branco/claro
+        centerTitle: true,
+        elevation: 0,
+        backgroundColor: Theme.of(context).cardColor,
       ),
-      body: FutureBuilder<dynamic>( // Usando dynamic para TicketDetail
+      body: FutureBuilder<TicketDetail>(
         future: apiService.fetchTicketDetails(ticket),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -66,24 +61,21 @@ class TicketDetailScreen extends StatelessWidget {
             );
           }
 
-          if (!snapshot.hasData) {
+          // Verificação de dados deve ser mais segura agora
+          final TicketDetail? detail = snapshot.data;
+
+          if (detail == null) {
             return const Center(
               child: Text('Detalhes da comanda não encontrados.'),
             );
           }
 
-          final detail = snapshot.data!;
           final dateFormat = DateFormat('dd/MM/yyyy HH:mm');
           final formattedDate = dateFormat.format(detail.createdAt);
 
           return Column(
             children: [
-              // ⭐️ CORREÇÃO 3: Header integrado (não flutua sobre o fundo branco)
               _buildHeader(context, detail, formattedDate),
-
-              // ❌ REMOVIDO: Divider desnecessário
-              // const Divider(height: 1),
-
               _buildItemsHeader(context, detail),
               Expanded(child: _buildItemsList(context, detail)),
               _buildActionButtons(context, detail),
@@ -94,24 +86,22 @@ class TicketDetailScreen extends StatelessWidget {
     );
   }
 
-  // ⭐️ WIDGET _buildHeader AJUSTADO (Removendo BoxShadow e Padding redundante)
+  // ⭐️ CORREÇÃO 3: Tipagem dos métodos de construção para TicketDetail
   Widget _buildHeader(
       BuildContext context,
-      dynamic detail,
+      TicketDetail detail, // Tipagem correta
       String formattedDate,
       ) {
     final Color primaryColor = Theme.of(context).colorScheme.primary;
 
     return Container(
-      // ⭐️ CORREÇÃO: Removendo o Card/BoxShadow para integrar o cabeçalho ao Scaffold
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
-      color: Theme.of(context).cardColor, // Fundo do Card (Branco)
+      color: Theme.of(context).cardColor,
 
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // 1. Título e Número
           Text(
             'COMANDA ${detail.number}',
             style: Theme.of(context).textTheme.headlineSmall!.copyWith(
@@ -123,7 +113,6 @@ class TicketDetailScreen extends StatelessWidget {
           ),
           const SizedBox(height: 6),
 
-          // 2. Data de Abertura (Sutil)
           Text(
             'Aberta em: $formattedDate',
             style: TextStyle(
@@ -135,7 +124,6 @@ class TicketDetailScreen extends StatelessWidget {
 
           const Divider(height: 30, thickness: 1.5),
 
-          // 3. Título do Total
           Text(
             'TOTAL DA COMANDA',
             style: Theme.of(context).textTheme.titleSmall!.copyWith(
@@ -147,9 +135,8 @@ class TicketDetailScreen extends StatelessWidget {
           ),
           const SizedBox(height: 8),
 
-          // 4. Valor Total (Destaque Principal)
           Text(
-            'R\$ ${detail.total.toStringAsFixed(2)}',
+            'R\$ ${detail.calculatedTotal.toStringAsFixed(2)}',
             style: Theme.of(context).textTheme.headlineLarge!.copyWith(
               color: primaryColor,
               fontWeight: FontWeight.w900,
@@ -162,14 +149,18 @@ class TicketDetailScreen extends StatelessWidget {
     );
   }
 
-  // ⭐️ WIDGET AJUSTADO: Título dos Itens (Melhor alinhamento e separação visual)
-  Widget _buildItemsHeader(BuildContext context, dynamic detail) {
+  // ⭐️ CORREÇÃO 4: Tipagem do método e uso do expand() seguro
+  Widget _buildItemsHeader(BuildContext context, TicketDetail detail) {
+    // ⭐️ CORREÇÃO DO ERRO: O detail agora é TicketDetail, então .orders é seguro.
+    // O .expand e .cast garantem o tipo de retorno List<ProductOrder>
+    final totalItemCount = detail.orders.expand((order) => order.items).length;
+
     return Container(
       width: double.infinity,
-      color: Theme.of(context).scaffoldBackgroundColor, // Cor do fundo da lista (provavelmente cinza claro)
+      color: Theme.of(context).scaffoldBackgroundColor,
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
       child: Text(
-        'ITENS PEDIDOS (${detail.items.length}):',
+        'ITENS PEDIDOS ($totalItemCount):',
         style: Theme.of(context).textTheme.titleLarge!.copyWith(
           fontSize: 18,
           fontWeight: FontWeight.bold,
@@ -179,15 +170,19 @@ class TicketDetailScreen extends StatelessWidget {
     );
   }
 
-  // ⭐️ WIDGET AJUSTADO: Lista de Itens (Fundo para a lista)
-  Widget _buildItemsList(BuildContext context, dynamic detail) {
+  // ⭐️ CORREÇÃO 5: Tipagem do método e uso do expand() seguro para a lista
+  Widget _buildItemsList(BuildContext context, TicketDetail detail) {
+    // Listamos todos os produtos individuais (ProductOrder)
+    final List<ProductOrder> allProducts =
+    detail.orders.expand((order) => order.items).toList().cast<ProductOrder>();
+
     return Container(
-      color: Theme.of(context).scaffoldBackgroundColor, // Fundo da lista cinza claro
+      color: Theme.of(context).scaffoldBackgroundColor,
       child: ListView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-        itemCount: detail.items.length,
+        itemCount: allProducts.length,
         itemBuilder: (context, index) {
-          final item = detail.items[index];
+          final item = allProducts[index]; // item é ProductOrder
 
           return Card(
             margin: const EdgeInsets.only(bottom: 8),
@@ -197,7 +192,7 @@ class TicketDetailScreen extends StatelessWidget {
               leading: CircleAvatar(
                 backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                 child: Text(
-                  '${item.quantity}x',
+                  '${item.quantity}x', // Propriedades do ProductOrder
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Theme.of(context).colorScheme.primary,
@@ -206,12 +201,14 @@ class TicketDetailScreen extends StatelessWidget {
                 ),
               ),
               title: Text(
-                item.productName,
+                item.name, // Propriedades do ProductOrder
                 style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
               ),
-              subtitle: Text('R\$ ${item.unitPrice.toStringAsFixed(2)} / un.'),
+              subtitle: Text(
+                'R\$ ${item.price.toStringAsFixed(2)} / un.', // Propriedades do ProductOrder
+              ),
               trailing: Text(
-                'R\$ ${item.subtotal.toStringAsFixed(2)}',
+                'R\$ ${item.total.toStringAsFixed(2)}', // Propriedades do ProductOrder
                 style: TextStyle(
                   fontWeight: FontWeight.w800,
                   fontSize: 16,
@@ -225,7 +222,8 @@ class TicketDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButtons(BuildContext context, dynamic detail) {
+  // ⭐️ CORREÇÃO 6: Tipagem dos métodos de construção para TicketDetail
+  Widget _buildActionButtons(BuildContext context, TicketDetail detail) {
     return Container(
       padding: const EdgeInsets.all(16.0),
       width: double.infinity,
@@ -241,18 +239,15 @@ class TicketDetailScreen extends StatelessWidget {
       ),
       child: Row(
         children: [
-
           _buildSplitButton(context, detail),
           const SizedBox(width: 10),
-
           _buildPaymentButton(context, detail),
         ],
       ),
     );
   }
 
-
-  Widget _buildSplitButton(BuildContext context, dynamic detail) {
+  Widget _buildSplitButton(BuildContext context, TicketDetail detail) {
     return Expanded(
       child: ElevatedButton.icon(
         onPressed: () => _handleSplitTicket(context, detail),
@@ -268,13 +263,12 @@ class TicketDetailScreen extends StatelessWidget {
     );
   }
 
-
-  Widget _buildPaymentButton(BuildContext context, dynamic detail) {
+  Widget _buildPaymentButton(BuildContext context, TicketDetail detail) {
     return Expanded(
       child: ElevatedButton.icon(
         onPressed: () => onNavigateToPayment(ticket),
         icon: const Icon(Icons.payment),
-        label: Text('Pagar (R\$ ${detail.total.toStringAsFixed(2)})'),
+        label: Text('Pagar (R\$ ${detail.calculatedTotal.toStringAsFixed(2)})'),
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.green.shade600,
           foregroundColor: Colors.white,

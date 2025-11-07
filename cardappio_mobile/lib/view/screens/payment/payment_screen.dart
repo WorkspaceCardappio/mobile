@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../data/api_service.dart';
 import '../../../model/ticket.dart';
-import '../../../model/ticket_item.dart';
+// Note: O import de TicketItem foi mantido
+import '../../../model/ticket_item.dart' hide ProductOrder;
 
 class PaymentScreen extends StatefulWidget {
   final Ticket? preSelectedTicket;
@@ -43,21 +44,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
     super.dispose();
   }
 
-  // ⭐️ Método NOVO/CORRIGIDO: Inicia a requisição e armazena o Future.
   void _startFetchingDetails(Ticket ticket) {
-    // 1. Inicia a requisição da API
     final future = widget.apiService.fetchTicketDetails(ticket);
 
-    // 2. Armazena o Future na variável de estado
     setState(() {
       _ticketDetailFuture = future.then((detail) {
-        // 3. Quando o Future completa, atualiza o estado com os detalhes
         if (mounted) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
               setState(() {
                 _ticketDetail = detail;
-                // ⭐️ USO DO CALCULATED TOTAL: Usar o valor calculado do getter
                 _updatePartialAmount(detail.calculatedTotal);
               });
             }
@@ -68,7 +64,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
     });
   }
 
-  // Mantido para compatibilidade, apenas retorna o Future.
   Future<TicketDetail> _fetchTicketDetails(Ticket ticket) async {
     return await widget.apiService.fetchTicketDetails(ticket);
   }
@@ -81,7 +76,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   void _handlePaymentProcessing() async {
-    // ⭐️ VARIÁVEL LOCAL PARA O TOTAL CALCULADO
     final double grandTotal = _ticketDetail?.calculatedTotal ?? 0.0;
 
     if (_selectedTicket == null || _ticketDetail == null || grandTotal == 0.0) {
@@ -95,12 +89,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
     double amountToPay = 0.0;
     if (_paymentOption == 'total') {
-      // ⭐️ USO DO CALCULATED TOTAL
       amountToPay = grandTotal;
     } else {
       amountToPay =
           double.tryParse(_partialController.text.replaceAll(',', '.')) ?? 0.0;
-      // ⭐️ USO DO CALCULATED TOTAL
       if (amountToPay <= 0 || amountToPay > grandTotal) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Valor parcial inválido.')),
@@ -150,10 +142,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Text(
-        //   'Selecione a comanda para visualizar os detalhes:',
-        //   style: Theme.of(context).textTheme.bodyMedium,
-        // ),
         const SizedBox(height: 10),
         DropdownButtonFormField<Ticket>(
           decoration: InputDecoration(
@@ -179,7 +167,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   _currentStep = 0;
                 }
               });
-              // ⭐️ Inicia a requisição ao mudar o Dropdown
               _startFetchingDetails(newValue);
             }
           },
@@ -190,14 +177,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
-  // ⭐️ CORREÇÃO: FutureBuilder agora usa _ticketDetailFuture
   Widget _buildTicketDetailsLoader() {
     if (_ticketDetailFuture == null) {
-      return const SizedBox.shrink(); // Nada para carregar ainda
+      return const SizedBox.shrink();
     }
 
     return FutureBuilder<TicketDetail>(
-      future: _ticketDetailFuture, // Usa o Future armazenado no estado
+      future: _ticketDetailFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Padding(
@@ -216,9 +202,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
           );
         }
 
-        // Usa _ticketDetail, que foi preenchido no .then()
         if (snapshot.hasData && _ticketDetail != null) {
-          return _buildTicketDetailConfirmation(_ticketDetail!); // ⭐️ Método corrigido
+          return _buildTicketDetailConfirmation(_ticketDetail!);
         }
 
         return const SizedBox.shrink();
@@ -226,10 +211,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
-  // ⭐️ MÉTODO CORRIGIDO: Usa detail.calculatedTotal para exibir o total correto
+  // ⭐️ MÉTODO CORRIGIDO PARA A NOVA HIERARQUIA (orders -> items)
   Widget _buildTicketDetailConfirmation(TicketDetail detail) {
-    // ⭐️ Obtém o total calculado
     final double grandTotal = detail.calculatedTotal;
+
+    // ⭐️ CORREÇÃO: Usamos .expand e .cast<ProductOrder>() para garantir a tipagem não-nula.
+    // Assumimos que a classe ProductOrder está definida e disponível (ou que TicketItem foi renomeado para ProductOrder).
+    final List<ProductOrder> allProducts =
+    detail.orders.expand((order) => order.items).cast<ProductOrder>().toList();
 
     return Card(
       margin: const EdgeInsets.only(top: 20),
@@ -246,10 +235,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   'Comanda ${detail.number}',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
-                // Text(
-                //   'Comanda #${detail.id.substring(0, 4)}',
-                //   style: Theme.of(context).textTheme.bodyMedium,
-                // ),
               ],
             ),
             const Divider(height: 20),
@@ -258,7 +243,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
-            ...detail.items.map((item) {
+            // ⭐️ Itera sobre a lista tipada
+            ...allProducts.map((item) {
+              // Agora, item é garantido como ProductOrder não-nulo, e as propriedades podem ser acessadas diretamente.
               return Padding(
                 padding: const EdgeInsets.only(bottom: 4.0),
                 child: Row(
@@ -266,12 +253,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   children: [
                     Expanded(
                       child: Text(
-                        '${item.quantity}x ${item.productName}',
+                        // Propriedades não-nulas de ProductOrder
+                        '${item.quantity}x ${item.name}',
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     Text(
-                      'R\$ ${item.subtotal.toStringAsFixed(2)}',
+                      // Propriedade não-nula de ProductOrder
+                      'R\$ ${item.total.toStringAsFixed(2)}',
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ],
@@ -287,7 +276,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 Text(
-                  // ⭐️ USO DO CALCULATED TOTAL
                   'R\$ ${grandTotal.toStringAsFixed(2)}',
                   style: Theme.of(context).textTheme.headlineMedium!.copyWith(
                     fontSize: 24,
@@ -302,7 +290,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
-  // ⭐️ MÉTODO CORRIGIDO: Usa calculatedTotal para exibição e validação
   Widget _buildStep2PaymentOptions() {
     if (_ticketDetail == null) {
       return const Center(child: Text('Carregando detalhes da comanda...'));
@@ -314,7 +301,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          // ⭐️ USO DO CALCULATED TOTAL
           'Comanda: ${_ticketDetail!.number} | Total: R\$ ${grandTotal.toStringAsFixed(2)}',
           style: Theme.of(context).textTheme.titleLarge!.copyWith(
             fontSize: 18,
@@ -333,7 +319,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
           groupValue: _paymentOption,
           onChanged: (value) => setState(() {
             _paymentOption = value!;
-            // ⭐️ USO DO CALCULATED TOTAL
             _updatePartialAmount(grandTotal);
           }),
           activeColor: Theme.of(context).colorScheme.primary,
@@ -353,7 +338,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(
                 labelText:
-                // ⭐️ USO DO CALCULATED TOTAL
                 'Valor a Pagar (Máx: R\$ ${grandTotal.toStringAsFixed(2)})',
                 prefixText: 'R\$ ',
                 border: const OutlineInputBorder(),
@@ -363,11 +347,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
       ],
     );
   }
-
-  // ⭐️ Métodos _buildSteps, _onStepContinue, _onStepCancel e build permanecem iguais
-  // ...
-  // [O resto do código abaixo não foi alterado pois não envolve a lógica de total]
-  // ...
 
   List<Step> _buildSteps(List<Ticket> availableTickets) {
     return [

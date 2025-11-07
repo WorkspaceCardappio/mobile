@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../data/api_service.dart';
 import '../../model/split_orders_dto.dart';
 import '../../model/ticket.dart';
-import '../../model/ticket_item.dart';
+// Note: ticket_item.dart (ou ProductOrder) não é mais usado diretamente aqui
 
 class SplitTicketDialog extends StatefulWidget {
   final TicketDetail currentTicket;
@@ -19,30 +19,23 @@ class SplitTicketDialog extends StatefulWidget {
 }
 
 class _SplitTicketDialogState extends State<SplitTicketDialog> {
+  // ⭐️ Armazena o ID do PEDIDO (Order ID) selecionado
   final Set<String> _selectedOrderKeys = {};
 
-  // Mantemos o destino nulo, indicando ao backend para criar um novo ticket.
   final String? _selectedDestinationTicketId = null;
 
-  // Mantemos _availableTickets e _isLoading apenas se forem usados em outras partes
-  // do initState (embora não sejam mais necessários para a UI de destino).
-  // Se _fetchAvailableTickets não for mais necessário, ele pode ser removido,
-  // mas o mantemos para evitar quebras em outras partes.
   List<Ticket> _availableTickets = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    // Chamada mantida caso seja necessária para outras validações futuras.
     _fetchAvailableTickets();
   }
 
-  // Método mantido, mas não afeta a UI de destino.
   Future<void> _fetchAvailableTickets() async {
     try {
       final allTickets = await widget.apiService.fetchTickets();
-
       setState(() {
         _availableTickets =
             allTickets.where((t) => t.id != widget.currentTicket.id).toList();
@@ -58,43 +51,34 @@ class _SplitTicketDialogState extends State<SplitTicketDialog> {
     }
   }
 
-  void _toggleItemSelection(String uniqueKey) {
+  void _toggleItemSelection(String orderId) {
     setState(() {
-      if (_selectedOrderKeys.contains(uniqueKey)) {
-        _selectedOrderKeys.remove(uniqueKey);
+      if (_selectedOrderKeys.contains(orderId)) {
+        _selectedOrderKeys.remove(orderId);
       } else {
-        _selectedOrderKeys.add(uniqueKey);
+        _selectedOrderKeys.add(orderId);
       }
     });
   }
 
   Future<void> _handleSplit() async {
     if (_selectedOrderKeys.isEmpty) {
-      _showSnackBar('Selecione ao menos um item para dividir.');
+      _showSnackBar('Selecione ao menos um pedido para dividir.');
       return;
     }
 
-    if (_selectedOrderKeys.length == widget.currentTicket.items.length) {
-      _showSnackBar('Não é permitido dividir todos os itens da comanda.');
+    // ⭐️ CORRIGIDO: Validação compara com o total de PEDIDOS (orders), não itens.
+    if (_selectedOrderKeys.length == widget.currentTicket.orders.length) {
+      _showSnackBar('Não é permitido dividir todos os pedidos da comanda.');
       return;
     }
 
-    // Extrai o ID real. Como o modelo TicketItem agora tem o Order ID real (ou ProductOrder ID),
-    // a lógica de split no backend deve funcionar.
-    final realOrderIds = _selectedOrderKeys
-        .map((key) => key.split('_').first)
-        .where((id) => id.isNotEmpty)
-        .toSet();
+    // Os IDs selecionados JÁ são os Order IDs que o backend espera.
+    final Set<String> realOrderIds = _selectedOrderKeys;
 
-    if (realOrderIds.isEmpty) {
-      _showSnackBar('Os itens selecionados não possuem um ID de pedido válido.');
-      return;
-    }
-
-    // O destino é sempre nulo, forçando a criação de um novo ticket no backend.
     final splitData = SplitOrdersDTO(
-      orders: realOrderIds,
-      ticket: null, // Destino fixo: Criar Nova Comanda
+      orders: realOrderIds, // Enviando os IDs dos PEDIDOS (Order IDs)
+      ticket: null,
     );
 
     try {
@@ -104,7 +88,6 @@ class _SplitTicketDialogState extends State<SplitTicketDialog> {
       );
 
       _showSnackBar('✅ Comanda dividida com sucesso!');
-
       Navigator.pop(context, true);
     } catch (e) {
       _showSnackBar('❌ Erro na divisão: ${e.toString().split(':').last.trim()}');
@@ -119,6 +102,10 @@ class _SplitTicketDialogState extends State<SplitTicketDialog> {
     }
   }
 
+  // ------------------------------------------
+  // WIDGETS DE CONSTRUÇÃO
+  // ------------------------------------------
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -131,66 +118,56 @@ class _SplitTicketDialogState extends State<SplitTicketDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Comanda de Origem: #${widget.currentTicket.id} (Mesa ${widget.currentTicket.number})',
+                'Comanda de Origem: ${widget.currentTicket.number} | Total: R\$ ${widget.currentTicket.calculatedTotal.toStringAsFixed(2)}',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const Divider(),
-
-
-              Text('Selecione os itens a serem movidos:', style: Theme.of(context).textTheme.titleSmall),
+              Text(
+                // Texto ajustado para refletir a divisão por Pedido
+                'Selecione os **pedidos completos** a serem movidos para uma nova comanda:',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
               const SizedBox(height: 8),
-              _buildItemsList(),
-
-              // ❌ REMOVIDO: Seção "Mover para:"
-              // const Divider(height: 20),
-              // Text('Mover para:', style: Theme.of(context).textTheme.titleSmall),
-              // const SizedBox(height: 8),
-              // _buildDestinationSelector(), // Método removido abaixo
+              _buildOrdersList(), // ⭐️ Chamando o método correto
             ],
           ),
         ),
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context, false), // Cancelar
+          onPressed: () => Navigator.pop(context, false),
           child: const Text('Cancelar'),
         ),
         ElevatedButton(
-          onPressed: _handleSplit,
+          onPressed: _selectedOrderKeys.isEmpty ? null : _handleSplit,
           child: const Text('Confirmar Divisão'),
         ),
       ],
     );
   }
 
-  Widget _buildItemsList() {
+  // ⭐️ NOVO MÉTODO: Constrói a lista iterando sobre AggregatedOrder
+  Widget _buildOrdersList() {
     return Column(
-      children: widget.currentTicket.items.asMap().entries.map((entry) {
-        final index = entry.key;
-        final item = entry.value;
-
-        // Cria a chave única: ID do pedido/produto + índice
-        final uniqueKey = '${item.id}_$index';
-
-        // Usa o Set de chaves corrigido
+      // ⭐️ Itera sobre a lista de PEDIDOS (orders)
+      children: widget.currentTicket.orders.map((order) {
+        final uniqueKey = order.orderId;
         final isSelected = _selectedOrderKeys.contains(uniqueKey);
 
         return CheckboxListTile(
           value: isSelected,
-          onChanged: (_) => _toggleItemSelection(uniqueKey), // Usa a chave única
-          title: Text('${item.quantity}x ${item.productName}'),
-          subtitle: Text('R\$ ${item.subtotal.toStringAsFixed(2)}'),
+          onChanged: (_) => _toggleItemSelection(uniqueKey),
+          // ⭐️ TÍTULO CORRIGIDO: Exibe o resumo dos produtos (X-Tudo E Refrigerante)
+          title: Text(order.summary),
+          // ⭐️ SUBTITLE CORRIGIDO: Exibe o subtotal do PEDIDO inteiro
+          subtitle: Text(
+              'Subtotal do Pedido: R\$ ${order.subtotal.toStringAsFixed(2)}'),
           controlAffinity: ListTileControlAffinity.leading,
-          tileColor: isSelected ? Theme.of(context).colorScheme.primary.withOpacity(0.1) : null,
+          tileColor: isSelected
+              ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+              : null,
         );
       }).toList(),
     );
   }
-
-// ❌ REMOVIDO: Método _buildDestinationSelector não é mais necessário.
-/*
-  Widget _buildDestinationSelector() {
-    return const SizedBox.shrink();
-  }
-  */
 }
