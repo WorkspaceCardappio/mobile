@@ -26,14 +26,14 @@ class Product {
 
   factory Product.fromJson(Map<String, dynamic> json) {
     return Product(
-      // ⭐️ CORREÇÃO: Mapeamento do ID. Usa 'idProductItem' (do JSON de retorno)
-      // Se 'idProductItem' falhar, tenta 'id', e usa 'id_desconhecido' como fallback.
-      id: json['idProductItem'] as String? ?? json['id'] as String? ?? 'id_desconhecido',
+      // ⭐️ CORREÇÃO FINAL: Usamos o 'idProduct' (que contém o ID base) para o campo 'id' no Flutter.
+      // Isso garante que o ProductDetailScreen.dart use o ID correto ao buscar variáveis.
+      id: json['idProduct'] as String? ?? json['idProductItem'] as String? ?? 'id_desconhecido',
 
       name: json['name'] as String,
       price: (json['price'] as num).toDouble(),
 
-      // ⭐️ CORREÇÃO: Tratamento de null para campos String não-nulos
+      // Tratamento seguro para campos String não-nulos
       description: json['description'] as String? ?? '',
       image: json['image'] as String? ?? '',
 

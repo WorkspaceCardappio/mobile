@@ -74,8 +74,6 @@ class SidebarCategoryMenu extends StatelessWidget {
 
       // Widget de Erro (Se falhar ao carregar)
       errorWidget: (context, url, error) {
-        // Mantenha os prints de debug aqui enquanto precisar
-        print('❌ FALHA AO CARREGAR: URL solicitada: $url | ERRO: $error');
 
         // Retorna um fundo escuro simples com um ícone de erro discreto
         return Container(
