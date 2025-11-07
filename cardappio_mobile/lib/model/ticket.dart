@@ -14,8 +14,6 @@ class Ticket {
   });
 
   // 🛠️ CORREÇÃO DE BUG DO DROPDOWN: Sobrescrevendo == e hashCode
-  // Isso garante que o Flutter considere instâncias de Ticket iguais se os IDs forem iguais,
-  // resolvendo o "Failed assertion" no DropdownButtonFormField.
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
@@ -90,17 +88,23 @@ class TicketDetail extends Ticket {
         TicketItem.fromBackendFlutterTicketJson(itemJson as Map<String, dynamic>))
         .toList();
 
-    final double total = (json['total'] as num).toDouble();
+    // ⭐️ CORREÇÃO CRÍTICA: Calcula o total a partir dos itens (pedidos) carregados,
+    // pois o campo 'total' não está mais vindo do JSON da API.
+    final double calculatedTotal = items.fold(0.0, (sum, item) => sum + item.subtotal);
+
+    // ❌ REMOVIDO: final double total = (json['total'] as num).toDouble();
+    // Essa linha causava o erro Null != num.
 
     return TicketDetail(
       id: baseTicket.id,
       number: baseTicket.number,
       createdAt: baseTicket.createdAt,
-      total: total,
+      total: calculatedTotal, // ⭐️ Usa o total calculado
       items: items,
     );
   }
 
+  // O getter permanece, mas o total é definido no construtor com o valor calculado.
   double get calculatedTotal {
     return items.fold(0.0, (sum, item) => sum + item.subtotal);
   }
