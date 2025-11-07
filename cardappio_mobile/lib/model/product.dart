@@ -11,8 +11,8 @@ class Product {
   final String description;
   final double price;
   final String? categoryName;
-  final String? note; // <<< ADICIONADO: Campo opcional para notas
-  final String image;  // <<< ADICIONADO: Campo para URL da imagem
+  final String? note; // Campo opcional para notas
+  final String image;  // Campo para URL da imagem
 
   Product({
     required this.id,
@@ -21,22 +21,28 @@ class Product {
     required this.price,
     this.categoryName,
     this.note,
-    required this.image, // <<< ADICIONADO ao construtor
+    required this.image,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
     return Product(
-      id: json['id'] as String,
+      // ⭐️ CORREÇÃO: Mapeamento do ID. Usa 'idProductItem' (do JSON de retorno)
+      // Se 'idProductItem' falhar, tenta 'id', e usa 'id_desconhecido' como fallback.
+      id: json['idProductItem'] as String? ?? json['id'] as String? ?? 'id_desconhecido',
+
       name: json['name'] as String,
-      description: json['description'] as String? ?? '',
       price: (json['price'] as num).toDouble(),
-      categoryName: json['categoryName'] as String?, // Mantido, se existir no JSON
-      note: json['note'] as String?, // <<< LÊ o campo 'note'
-      image: json['image'] as String? ?? '', // <<< LÊ o campo 'image' (string vazia se nulo)
+
+      // ⭐️ CORREÇÃO: Tratamento de null para campos String não-nulos
+      description: json['description'] as String? ?? '',
+      image: json['image'] as String? ?? '',
+
+      // Campos opcionais (String?)
+      categoryName: json['categoryName'] as String?,
+      note: json['note'] as String?,
     );
   }
 }
-
 
 class ProductAddOn {
   final String id;
@@ -53,7 +59,6 @@ class ProductAddOn {
     );
   }
 }
-
 
 class ProductOption {
   final String id;
