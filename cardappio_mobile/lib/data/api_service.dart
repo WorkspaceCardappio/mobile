@@ -8,6 +8,7 @@ import '../model/order_create_dto.dart';
 import '../model/product.dart';
 import '../model/split_orders_dto.dart';
 import '../model/ticket.dart';
+import '../model/ticket_item.dart'; // Garantindo que todos os modelos sejam importados (se ticket_item foi renomeado, ajuste o caminho)
 
 class ApiService {
   final http.Client _client;
@@ -49,7 +50,6 @@ class ApiService {
         headers: {'Content-Type': 'application/json; charset=UTF-8'},
         body: json.encode(data),
       );
-      // O endpoint de split retorna 200 OK
       if (response.statusCode != 200) {
         throw Exception('Falha na requisição POST: Status ${response.statusCode}. Resposta: ${response.body}');
       }
@@ -75,19 +75,27 @@ class ApiService {
     if (categoryId.isEmpty) return [];
     final endpoint = '$kProductsEndpoint/$categoryId/flutter-products';
     final List<dynamic> productsJson = await _get(endpoint);
+    // ✅ Este método deve estar correto se Product.fromJson estiver OK.
     return productsJson.map((json) => Product.fromJson(json)).toList();
   }
 
   Future<List<Category>> fetchCategories(String menuId) async {
     final endpoint = '$kCategoriesEndpoint/$menuId/flutter-categories';
     final List<dynamic> categoriesJson = await _get(endpoint);
+    // ✅ Este método deve estar correto.
     return categoriesJson.map((json) => Category.fromJson(json)).toList();
   }
 
+  // ⭐️ MÉTODO CORRIGIDO: Adicionando verificação de Map para garantir tipagem
   Future<List<ProductAddOn>> fetchProductAddOns(String productId) async {
     final endpoint = '$kAdditionalsEndpoint/$productId/flutter-additionals';
     final List<dynamic> addOnsJson = await _get(endpoint);
-    return addOnsJson.map((json) => ProductAddOn.fromJson(json)).toList();
+
+    return addOnsJson
+    // Garante que só Maps válidos sejam passados
+        .where((json) => json is Map<String, dynamic>)
+        .map((json) => ProductAddOn.fromJson(json as Map<String, dynamic>))
+        .toList();
   }
 
   Future<List<Ticket>> fetchAvailableTickets() async {
@@ -125,13 +133,10 @@ class ApiService {
     await _postVoid(endpoint, splitData.toJson());
   }
 
-  // --- Método Real (Não mais mockado) ---
-
   Future<TicketDetail> fetchTicketDetails(Ticket baseTicket) async {
-    // kTicketsEndpoint deve ser o endpoint base (ex: http://localhost:8080/api/tickets)
     final uri = Uri.parse('http://10.0.2.2:8080/api/tickets/flutter-tickets/by-ticket/${baseTicket.id}');
 
-    print('DEBUG URL: $uri'); // ✅ USE ESTE PRINT PARA CONFERIR!
+    print('DEBUG URL: $uri');
 
     try {
       final response = await _client.get(uri);
@@ -139,7 +144,6 @@ class ApiService {
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonResponse = jsonDecode(utf8.decode(response.bodyBytes));
 
-        // Usa o factory que combina a resposta do backend com o Ticket base
         return TicketDetail.fromBackendFlutterTicketJson(
           json: jsonResponse,
           baseTicket: baseTicket,

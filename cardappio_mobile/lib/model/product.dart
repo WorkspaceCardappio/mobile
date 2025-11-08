@@ -12,6 +12,8 @@ class Product {
   final String description;
   final double price;
   final String? categoryName;
+  final String? note; // Campo opcional para notas
+  final String image;  // Campo para URL da imagem
 
   Product({
     required this.idProductItem,
@@ -20,6 +22,8 @@ class Product {
     required this.description,
     required this.price,
     this.categoryName,
+    this.note,
+    required this.image,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -27,12 +31,18 @@ class Product {
       idProductItem: json['idProductItem'] as String,
       idProduct: json['idProduct'] as String,
       name: json['name'] as String,
-      description: json['description'] as String? ?? '',
       price: (json['price'] as num).toDouble(),
+
+      // Tratamento seguro para campos String não-nulos
+      description: json['description'] as String? ?? '',
+      image: json['image'] as String? ?? '',
+
+      // Campos opcionais (String?)
+      categoryName: json['categoryName'] as String?,
+      note: json['note'] as String?,
     );
   }
 }
-
 
 class ProductAddOn {
   final String id;
@@ -49,7 +59,6 @@ class ProductAddOn {
     );
   }
 }
-
 
 class ProductOption {
   final String id;

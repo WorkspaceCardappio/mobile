@@ -1,10 +1,7 @@
-
-
 import 'package:flutter/material.dart';
 import '../../data/api_service.dart';
 import '../../model/split_orders_dto.dart';
 import '../../model/ticket.dart';
-import '../../model/ticket_item.dart';
 
 class SplitTicketDialog extends StatefulWidget {
   final TicketDetail currentTicket;
@@ -21,37 +18,18 @@ class SplitTicketDialog extends StatefulWidget {
 }
 
 class _SplitTicketDialogState extends State<SplitTicketDialog> {
-  final Set<String> _selectedOrderIds = {};
-  String? _selectedDestinationTicketId;
-  List<Ticket> _availableTickets = [];
-  bool _isLoading = true;
+  final Set<String> _selectedOrderIds = {}; // IDs dos PEDIDOS selecionados
+  bool _isProcessingSplit = false; // Estado para desabilitar botões durante o processamento
 
   @override
   void initState() {
     super.initState();
-    _fetchAvailableTickets();
+    // A chamada a _fetchAvailableTickets não é mais necessária!
   }
 
-  Future<void> _fetchAvailableTickets() async {
-    try {
-      final allTickets = await widget.apiService.fetchTickets();
+  void _toggleOrderSelection(String orderId) {
+    if (_isProcessingSplit) return;
 
-      setState(() {
-        _availableTickets =
-            allTickets.where((t) => t.id != widget.currentTicket.id).toList();
-        _isLoading = false;
-      });
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao carregar destinos: $e')),
-        );
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  void _toggleItemSelection(String orderId) {
     setState(() {
       if (_selectedOrderIds.contains(orderId)) {
         _selectedOrderIds.remove(orderId);
@@ -62,20 +40,24 @@ class _SplitTicketDialogState extends State<SplitTicketDialog> {
   }
 
   Future<void> _handleSplit() async {
+    final int totalOrders = widget.currentTicket.orders.length;
+
     if (_selectedOrderIds.isEmpty) {
-      _showSnackBar('Selecione ao menos um item para dividir.');
+      _showSnackBar('Selecione ao menos um pedido para divisão.', isError: false);
       return;
     }
 
-
-    if (_selectedOrderIds.length == widget.currentTicket.items.length) {
-      _showSnackBar('Não é permitido dividir todos os itens da comanda.');
+    if (_selectedOrderIds.length == totalOrders) {
+      _showSnackBar('Não é permitido mover todos os pedidos. Um pedido deve permanecer na comanda original.', isError: true);
       return;
     }
 
-    final splitData = SplitOrdersDTO(
+    setState(() => _isProcessingSplit = true);
+
+    // O destino é sempre nulo para criar uma nova comanda.
+    final SplitOrdersDTO splitData = SplitOrdersDTO(
       orders: _selectedOrderIds,
-      ticket: _selectedDestinationTicketId,
+      ticket: null,
     );
 
     try {
@@ -84,132 +66,252 @@ class _SplitTicketDialogState extends State<SplitTicketDialog> {
         splitData,
       );
 
-      _showSnackBar('✅ Comanda dividida com sucesso!');
-
-      Navigator.pop(context, true);
+      _showSnackBar('✅ Divisão realizada com sucesso!');
+      if (mounted) {
+        Navigator.pop(context, true); // Retorna true para indicar sucesso e recarregar
+      }
     } catch (e) {
-      _showSnackBar('❌ Erro na divisão: ${e.toString().split(':').last.trim()}');
+      _showSnackBar('❌ Erro na divisão: ${e.toString().split(':').last.trim()}', isError: true);
+    } finally {
+      setState(() => _isProcessingSplit = false);
     }
   }
 
-  void _showSnackBar(String message) {
+  void _showSnackBar(String message, {bool isError = false}) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
+        SnackBar(
+          content: Text(message),
+          backgroundColor: isError ? Theme.of(context).colorScheme.error : Colors.green.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          margin: const EdgeInsets.all(16),
+        ),
       );
     }
   }
 
+  // --- WIDGETS DE CONSTRUÇÃO ---
+
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Dividir Comanda'),
-      content: SingleChildScrollView(
-        child: SizedBox(
-          width: 500, // Limita a largura do modal
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Comanda de Origem: #${widget.currentTicket.id} (Mesa ${widget.currentTicket.number})',
-                style: Theme.of(context).textTheme.titleMedium,
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 10,
+      backgroundColor: Colors.white,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // ⭐️ Header Customizado (Cor Primary do Tema)
+          _buildHeader(context),
+
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Informações da Comanda Original
+                  Text(
+                    'Comanda: #${widget.currentTicket.number}',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: Theme.of(context).colorScheme.primary, // Usa Primary Color
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Total: R\$ ${widget.currentTicket.calculatedTotal.toStringAsFixed(2)}',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: Colors.green.shade600,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Divider(height: 32, thickness: 1, color: Colors.grey.shade300),
+
+                  Text(
+                    '(Será criada uma nova comanda a partir dos pedidos selecionados.)',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Colors.grey.shade700,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  _buildOrdersList(),
+                  const SizedBox(height: 12),
+                ],
               ),
-              const Divider(),
-
-
-              Text('Selecione os itens a serem movidos:', style: Theme.of(context).textTheme.titleSmall),
-              const SizedBox(height: 8),
-              _buildItemsList(),
-              const Divider(height: 20),
-
-
-              Text('Mover para:', style: Theme.of(context).textTheme.titleSmall),
-              const SizedBox(height: 8),
-              _buildDestinationSelector(),
-            ],
+            ),
           ),
-        ),
+
+          _buildActionButtons(context),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false), // Cancelar
-          child: const Text('Cancelar'),
-        ),
-        ElevatedButton(
-          onPressed: _handleSplit,
-          child: const Text('Confirmar Divisão'),
-        ),
-      ],
     );
   }
 
-  Widget _buildItemsList() {
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primary, // Cor Primária do Tema
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Dividir Comanda',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, color: Colors.white),
+            onPressed: () => Navigator.pop(context, false),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOrdersList() {
+    if (widget.currentTicket.orders.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            'Nenhum pedido disponível para divisão.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600),
+          ),
+        ),
+      );
+    }
+
+    final Color primaryColor = Theme.of(context).colorScheme.primary;
+    final Color accentColor = Colors.orange.shade600; // Usando laranja como cor de alerta/seleção
+
     return Column(
-      children: widget.currentTicket.items.map((item) {
-        final isSelected = _selectedOrderIds.contains(item.id);
-        return CheckboxListTile(
-          value: isSelected,
-          onChanged: (_) => _toggleItemSelection(item.id),
-          title: Text('${item.quantity}x ${item.productName}'),
-          subtitle: Text('R\$ ${item.subtotal.toStringAsFixed(2)}'),
-          controlAffinity: ListTileControlAffinity.leading,
-          tileColor: isSelected ? Colors.blue.shade50 : null,
+      children: widget.currentTicket.orders.map((order) {
+        final uniqueKey = order.orderId;
+        final isSelected = _selectedOrderIds.contains(uniqueKey);
+
+        return Card(
+          elevation: isSelected ? 4 : 1,
+          margin: const EdgeInsets.only(bottom: 10),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+              color: isSelected ? accentColor : Colors.grey.shade300,
+              width: isSelected ? 2 : 1,
+            ),
+          ),
+          child: InkWell(
+            onTap: _isProcessingSplit ? null : () => _toggleOrderSelection(uniqueKey),
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Ícone de Seleção
+                  Icon(
+                    isSelected ? Icons.check_circle_rounded : Icons.radio_button_off,
+                    color: isSelected ? accentColor : Colors.grey.shade400,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 16),
+
+                  // Detalhes do Pedido
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          order.summary,
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: Colors.grey.shade900,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                      ],
+                    ),
+                  ),
+
+                  // Valor
+                  Text(
+                    'R\$ ${order.subtotal.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 18,
+                      color: Colors.green.shade600, // Destaque Verde para valor
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         );
       }).toList(),
     );
   }
 
-  Widget _buildDestinationSelector() {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
+  Widget _buildActionButtons(BuildContext context) {
+    final bool canProceed = _selectedOrderIds.isNotEmpty &&
+        _selectedOrderIds.length < widget.currentTicket.orders.length;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        RadioListTile<String?>(
-          title: const Text('Criar Nova Comanda'),
-          value: null,
-          groupValue: _selectedDestinationTicketId,
-          onChanged: (value) => setState(() => _selectedDestinationTicketId = value),
-        ),
-        const Divider(height: 1),
-        RadioListTile<String?>(
-          title: Text('Comanda Existente (${_availableTickets.length} disponíveis)'),
-          value: 'select', // Valor temporário para abrir o dropdown
-          groupValue: _selectedDestinationTicketId != null ? 'select' : null,
-          onChanged: (value) {
-            if (value == 'select') {
-              setState(() => _selectedDestinationTicketId = _availableTickets.isNotEmpty ? _availableTickets.first.id : null);
-            }
-          },
-        ),
-        if (_selectedDestinationTicketId != null)
-          Padding(
-            padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 8.0),
-            child: DropdownButtonFormField<String>(
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'Selecione a Comanda Destino',
+    final Color primaryColor = Theme.of(context).colorScheme.primary;
+
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton(
+              onPressed: _isProcessingSplit ? null : () => Navigator.pop(context, false),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: primaryColor,
+                side: BorderSide(color: primaryColor.withOpacity(0.5)),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
-              value: _selectedDestinationTicketId,
-              items: _availableTickets.map((ticket) {
-                return DropdownMenuItem(
-                  value: ticket.id,
-                  child: Text(
-                    'Mesa ${ticket.number} - Total: R\$ ${ticket.total.toStringAsFixed(2)}',
-                  ),
-                );
-              }).toList(),
-              onChanged: (String? newValue) {
-                setState(() {
-                  _selectedDestinationTicketId = newValue;
-                });
-              },
+              child: const Text('Cancelar'),
             ),
           ),
-      ],
+          const SizedBox(width: 16),
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: (canProceed && !_isProcessingSplit) ? _handleSplit : null,
+              icon: _isProcessingSplit
+                  ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+                  : const Icon(Icons.send_rounded, size: 24),
+              label: Text(_isProcessingSplit ? 'Processando...' : 'Criar Nova Comanda'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                elevation: 4,
+                textStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../data/api_service.dart';
 import '../../../model/ticket.dart';
-import '../../../model/ticket_item.dart';
+import '../../../model/ticket_item.dart' hide ProductOrder;
 
 class PaymentScreen extends StatefulWidget {
   final Ticket? preSelectedTicket;
@@ -20,15 +21,20 @@ class PaymentScreen extends StatefulWidget {
 class _PaymentScreenState extends State<PaymentScreen> {
   Ticket? _selectedTicket;
   TicketDetail? _ticketDetail;
+  Future<TicketDetail>? _ticketDetailFuture;
+
   int _currentStep = 0;
   String _paymentOption = 'total';
-  double _partialAmount = 0.0;
   final TextEditingController _partialController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _selectedTicket = widget.preSelectedTicket;
+
+    if (_selectedTicket != null) {
+      _startFetchingDetails(_selectedTicket!);
+    }
   }
 
   @override
@@ -37,55 +43,68 @@ class _PaymentScreenState extends State<PaymentScreen> {
     super.dispose();
   }
 
-  // ⭐️ ALTERADO: Recebe o objeto Ticket completo para passar ao ApiService
-  // (que já tem o ID e dados base como mesa e data)
-  Future<TicketDetail> _fetchTicketDetails(Ticket ticket) async {
-    final detail = await widget.apiService.fetchTicketDetails(ticket);
-    if (mounted) {
-      setState(() {
-        _ticketDetail = detail;
-        _updatePartialAmount(detail.total);
+  void _startFetchingDetails(Ticket ticket) {
+    final future = widget.apiService.fetchTicketDetails(ticket);
+
+    setState(() {
+      _ticketDetailFuture = future.then((detail) {
+        if (mounted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              setState(() {
+                _ticketDetail = detail;
+                _updatePartialAmount(detail.calculatedTotal);
+              });
+            }
+          });
+        }
+        return detail;
       });
-    }
-    return detail;
+    });
   }
 
   void _updatePartialAmount(double total) {
     setState(() {
-      _partialAmount = total;
       _partialController.text = total.toStringAsFixed(2);
     });
   }
 
   void _handlePaymentProcessing() async {
-    if (_selectedTicket == null || _ticketDetail == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Comanda não selecionada ou detalhes não carregados.'),
-        ),
-      );
+    final double grandTotal = _ticketDetail?.calculatedTotal ?? 0.0;
+
+    if (_selectedTicket == null || _ticketDetail == null || grandTotal == 0.0) {
+      _showSnackBar('Comanda não selecionada ou detalhes não carregados.', isError: true);
       return;
     }
 
     double amountToPay = 0.0;
     if (_paymentOption == 'total') {
-      amountToPay = _ticketDetail!.total;
+      amountToPay = grandTotal;
     } else {
-      amountToPay =
-          double.tryParse(_partialController.text.replaceAll(',', '.')) ?? 0.0;
-      if (amountToPay <= 0 || amountToPay > _ticketDetail!.total) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Valor parcial inválido.')),
-        );
+      amountToPay = double.tryParse(_partialController.text.replaceAll(',', '.')) ?? 0.0;
+      if (amountToPay <= 0 || amountToPay > grandTotal) {
+        _showSnackBar('Valor parcial inválido.', isError: true);
         return;
       }
     }
 
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Processando pagamento de R\$ ${amountToPay.toStringAsFixed(2)} para Comanda #${_selectedTicket!.id}...',
+    // Mostra loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Processando pagamento...'),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -93,10 +112,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
     final result = await widget.apiService.payTicket(_selectedTicket!.id);
 
     if (!mounted) return;
+    Navigator.pop(context); // Remove loading
+
     if (result) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('✅ Pagamento realizado com sucesso!')),
-      );
+      _showSnackBar('Pagamento realizado com sucesso!', isSuccess: true);
 
       if (_paymentOption == 'total') {
         setState(() {
@@ -107,83 +126,181 @@ class _PaymentScreenState extends State<PaymentScreen> {
       }
 
       if (widget.preSelectedTicket != null && Navigator.canPop(context)) {
-        Navigator.pop(context, true);
+        await Future.delayed(const Duration(milliseconds: 800));
+        if (mounted) Navigator.pop(context, true);
       }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('❌ Falha na transação. Tente novamente.'),
-        ),
-      );
+      _showSnackBar('Falha na transação. Tente novamente.', isError: true);
     }
   }
 
+  void _showSnackBar(String message, {bool isError = false, bool isSuccess = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              isSuccess ? Icons.check_circle : (isError ? Icons.error : Icons.info),
+              color: Colors.white,
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: isSuccess
+            ? Colors.green.shade600
+            : (isError ? Colors.red.shade600 : Colors.blue.shade600),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  // ⭐️ WIDGET: Leading com número da comanda
+  Widget _buildTicketNumberBadge(int number, {double size = 50}) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Center(
+        child: Text(
+          '#$number',
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.primary,
+            fontWeight: FontWeight.w800,
+            fontSize: size * 0.32,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ⭐️ STEP 1: Seleção e Visualização da Comanda
   Widget _buildStep1SelectTicket(List<Ticket> availableTickets) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Selecione a comanda para visualizar os detalhes:',
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        const SizedBox(height: 10),
-        DropdownButtonFormField<Ticket>(
-          decoration: InputDecoration(
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-            labelText: 'Comanda a Pagar',
+        const SizedBox(height: 8),
+
+        // Dropdown modernizado
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade300),
           ),
-          value: _selectedTicket,
-          items: availableTickets.map((ticket) {
-            return DropdownMenuItem(
-              value: ticket,
-              child: Text(
-                'Mesa ${ticket.number} - Total: R\$ ${ticket.total.toStringAsFixed(2)}',
-              ),
-            );
-          }).toList(),
-          onChanged: (Ticket? newValue) {
-            if (newValue != null) {
-              setState(() {
-                _selectedTicket = newValue;
-                _ticketDetail = null;
-                _paymentOption = 'total';
-                if (_currentStep == 1) {
-                  _currentStep = 0;
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<Ticket>(
+              isExpanded: true,
+              value: _selectedTicket,
+              hint: const Text('Selecione uma comanda'),
+              icon: const Icon(Icons.keyboard_arrow_down_rounded),
+              items: availableTickets.map((ticket) {
+                return DropdownMenuItem(
+                  value: ticket,
+                  child: Row(
+                    children: [
+                      _buildTicketNumberBadge(ticket.number, size: 35),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Comanda ${ticket.number}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                            ),
+                            Text(
+                              'R\$ ${ticket.total.toStringAsFixed(2)}',
+                              style: TextStyle(
+                                color: Colors.green.shade600,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+              onChanged: (Ticket? newValue) {
+                if (newValue != null) {
+                  setState(() {
+                    _selectedTicket = newValue;
+                    _ticketDetail = null;
+                    _paymentOption = 'total';
+                    if (_currentStep == 1) {
+                      _currentStep = 0;
+                    }
+                  });
+                  _startFetchingDetails(newValue);
                 }
-              });
-            }
-          },
-          hint: const Text('Selecione uma comanda'),
+              },
+            ),
+          ),
         ),
-        if (_selectedTicket != null) _buildTicketDetailsLoader(),
+
+        _buildTicketDetailsLoader(),
       ],
     );
   }
 
   Widget _buildTicketDetailsLoader() {
-    // ⭐️ ALTERADO: Passando o objeto 'Ticket' inteiro para _fetchTicketDetails
+    if (_ticketDetailFuture == null) {
+      return const SizedBox.shrink();
+    }
+
     return FutureBuilder<TicketDetail>(
-      future: _fetchTicketDetails(_selectedTicket!),
+      future: _ticketDetailFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Padding(
-            padding: EdgeInsets.only(top: 20.0),
-            child: Center(child: CircularProgressIndicator()),
+          return Container(
+            margin: const EdgeInsets.only(top: 20),
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Center(child: CircularProgressIndicator()),
           );
         }
 
         if (snapshot.hasError) {
-          return Padding(
-            padding: const EdgeInsets.only(top: 20.0),
-            child: Text(
-              'Erro ao carregar detalhes: ${snapshot.error.toString().split(':').last.trim()}',
-              style: const TextStyle(color: Colors.red),
+          return Container(
+            margin: const EdgeInsets.only(top: 20),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.red.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.red.shade200),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.red.shade700),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Erro: ${snapshot.error.toString().split(':').last.trim()}',
+                    style: TextStyle(color: Colors.red.shade700),
+                  ),
+                ),
+              ],
             ),
           );
         }
 
-        if (snapshot.hasData) {
-          return _buildTicketDetailConfirmation(snapshot.data!);
+        if (snapshot.hasData && _ticketDetail != null) {
+          return _buildTicketDetailConfirmation(_ticketDetail!);
         }
 
         return const SizedBox.shrink();
@@ -191,148 +308,405 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
+  // ⭐️ DETALHES DA COMANDA: Design Moderno e Limpo
   Widget _buildTicketDetailConfirmation(TicketDetail detail) {
-    return Card(
+    final double grandTotal = detail.calculatedTotal;
+    final List<ProductOrder> allProducts =
+    detail.orders.expand((order) => order.items).cast<ProductOrder>().toList();
+
+    return Container(
       margin: const EdgeInsets.only(top: 20),
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.shade200,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header com número da comanda
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(12),
+                topRight: Radius.circular(12),
+              ),
+            ),
+            child: Row(
               children: [
-                Text(
-                  'Mesa ${detail.number}',
-                  style: Theme.of(context).textTheme.titleLarge,
+                _buildTicketNumberBadge(detail.number, size: 45),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Comanda ${detail.number}',
+                    style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
-                Text(
-                  'Comanda #${detail.id.substring(0, 4)}',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
+                Icon(Icons.check_circle, color: Colors.green.shade600, size: 24),
               ],
             ),
-            const Divider(height: 20),
-            Text(
-              'Itens na Comanda:',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            ...detail.items.map((item) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 4.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          ),
+
+          // Lista de produtos
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Expanded(
-                      child: Text(
-                        '${item.quantity}x ${item.productName}',
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
+                    Icon(Icons.receipt_long, size: 18, color: Colors.grey.shade600),
+                    const SizedBox(width: 8),
                     Text(
-                      'R\$ ${item.subtotal.toStringAsFixed(2)}',
-                      style: const TextStyle(fontWeight: FontWeight.w600),
+                      'Itens do Pedido',
+                      style: Theme.of(context).textTheme.titleMedium!.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade700,
+                      ),
                     ),
                   ],
                 ),
-              );
-            }).toList(),
-            const Divider(height: 20),
-            Row(
+                const SizedBox(height: 12),
+
+                // Lista de itens
+                ...allProducts.map((item) {
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '${item.quantity}x',
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.primary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            item.name,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          'R\$ ${item.total.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ],
+            ),
+          ),
+
+          // Total
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.green.shade50,
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(12),
+                bottomRight: Radius.circular(12),
+              ),
+            ),
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Total Geral:',
-                  style: Theme.of(context).textTheme.titleLarge,
+                  'Total Geral',
+                  style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 Text(
-                  'R\$ ${detail.total.toStringAsFixed(2)}',
-                  style: Theme.of(context).textTheme.headlineMedium!.copyWith(
-                    fontSize: 24,
+                  'R\$ ${grandTotal.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
                     color: Colors.green.shade700,
                   ),
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
+  // ⭐️ STEP 2: Opções de Pagamento Modernizadas
   Widget _buildStep2PaymentOptions() {
     if (_ticketDetail == null) {
-      return const Center(child: Text('Carregando detalhes da comanda...'));
+      return const Center(child: CircularProgressIndicator());
     }
+
+    final double grandTotal = _ticketDetail!.calculatedTotal;
+    final modernGreen = Colors.green.shade600;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Comanda: Mesa ${_ticketDetail!.number} | Total: R\$ ${_ticketDetail!.total.toStringAsFixed(2)}',
-          style: Theme.of(context).textTheme.titleLarge!.copyWith(
-            fontSize: 18,
-            color: Theme.of(context).colorScheme.secondary,
+        // Resumo da comanda
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: Row(
+            children: [
+              _buildTicketNumberBadge(_ticketDetail!.number, size: 40),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Comanda ${_ticketDetail!.number}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'R\$ ${grandTotal.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: modernGreen,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
-        const Divider(height: 25),
-        Text(
-          'Selecione o Tipo de Pagamento:',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        const SizedBox(height: 10),
-        RadioListTile<String>(
-          title: const Text('Pagamento Total'),
-          value: 'total',
-          groupValue: _paymentOption,
-          onChanged: (value) => setState(() {
-            _paymentOption = value!;
-            _updatePartialAmount(_ticketDetail!.total);
-          }),
-          activeColor: Theme.of(context).colorScheme.primary,
-        ),
-        RadioListTile<String>(
-          title: const Text('Pagamento Parcial'),
-          value: 'partial',
-          groupValue: _paymentOption,
-          onChanged: (value) => setState(() => _paymentOption = value!),
-          activeColor: Theme.of(context).colorScheme.primary,
-        ),
-        if (_paymentOption == 'partial')
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-            child: TextFormField(
-              controller: _partialController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(
-                labelText:
-                'Valor a Pagar (Máx: R\$ ${_ticketDetail!.total.toStringAsFixed(2)})',
-                prefixText: 'R\$ ',
-                border: const OutlineInputBorder(),
+
+        const SizedBox(height: 24),
+
+        // Título da seção
+        Row(
+          children: [
+            Icon(Icons.payment_rounded, color: Colors.grey.shade700),
+            const SizedBox(width: 8),
+            Text(
+              'Forma de Pagamento',
+              style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                fontWeight: FontWeight.bold,
               ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 16),
+
+        // Opção: Pagamento Total
+        _buildPaymentOptionCard(
+          title: 'Pagamento Total',
+          subtitle: 'Pagar o valor completo da comanda',
+          value: 'total',
+          icon: Icons.credit_card,
+          color: modernGreen,
+        ),
+
+        const SizedBox(height: 12),
+
+        // Opção: Pagamento Parcial
+        _buildPaymentOptionCard(
+          title: 'Pagamento Parcial',
+          subtitle: 'Pagar apenas uma parte do valor',
+          value: 'partial',
+          icon: Icons.account_balance_wallet,
+          color: Colors.blue.shade600,
+        ),
+
+        // Campo de valor parcial
+        if (_paymentOption == 'partial')
+          Container(
+            margin: const EdgeInsets.only(top: 16),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.blue.shade200),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.info_outline, size: 18, color: Colors.blue.shade700),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Informe o valor a pagar',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.blue.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _partialController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                  ],
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  decoration: InputDecoration(
+                    labelText: 'Valor',
+                    prefixText: 'R\$ ',
+                    prefixStyle: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade700,
+                    ),
+                    helperText: 'Máximo: R\$ ${grandTotal.toStringAsFixed(2)}',
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: Colors.blue.shade300),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: Colors.blue.shade300),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: Colors.blue.shade600, width: 2),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
       ],
     );
   }
 
+  Widget _buildPaymentOptionCard({
+    required String title,
+    required String subtitle,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
+    final isSelected = _paymentOption == value;
+
+    return InkWell(
+      onTap: () => setState(() => _paymentOption = value),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected ? color.withOpacity(0.1) : Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? color : Colors.grey.shade300,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: isSelected ? color.withOpacity(0.2) : Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: isSelected ? color : Colors.grey.shade600, size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: isSelected ? color : Colors.grey.shade800,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isSelected)
+              Icon(Icons.check_circle, color: color, size: 28)
+            else
+              Icon(Icons.circle_outlined, color: Colors.grey.shade400, size: 28),
+          ],
+        ),
+      ),
+    );
+  }
+
   List<Step> _buildSteps(List<Ticket> availableTickets) {
     return [
       Step(
-        title: const Text('Selecionar e Conferir Comanda'),
+        title: const Text('Selecionar Comanda'),
+        subtitle: const Text('Escolha e confira os itens'),
         content: _buildStep1SelectTicket(availableTickets),
         isActive: _currentStep == 0,
         state: _selectedTicket != null && _ticketDetail != null
             ? StepState.complete
-            : StepState.editing,
+            : StepState.indexed,
       ),
       Step(
-        title: const Text('Opções e Finalização'),
+        title: const Text('Finalizar Pagamento'),
+        subtitle: const Text('Escolha a forma de pagamento'),
         content: _buildStep2PaymentOptions(),
         isActive: _currentStep == 1,
-        state: StepState.editing,
+        state: _currentStep == 1 ? StepState.indexed : StepState.disabled,
       ),
     ];
   }
@@ -342,11 +716,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       if (_selectedTicket != null && _ticketDetail != null) {
         setState(() => _currentStep = 1);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Por favor, carregue e confirme a comanda primeiro.'),
-          ),
-        );
+        _showSnackBar('Aguarde o carregamento dos detalhes da comanda.', isError: true);
       }
     } else {
       _handlePaymentProcessing();
@@ -364,11 +734,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Processar Pagamento'),
-        automaticallyImplyLeading: false,
-        elevation: 0,
-      ),
       body: FutureBuilder<List<Ticket>>(
         future: widget.apiService.fetchTickets(),
         builder: (context, snapshot) {
@@ -378,77 +743,133 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
           if (snapshot.hasError || !snapshot.hasData) {
             return Center(
-              child: Text(
-                'Erro ao carregar comandas: ${snapshot.error.toString().split(':').last.trim()}',
+              child: Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.error_outline, size: 64, color: Colors.red.shade400),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Erro ao carregar comandas',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      snapshot.error.toString().split(':').last.trim(),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey.shade600),
+                    ),
+                  ],
+                ),
               ),
             );
           }
 
           final availableTickets = snapshot.data!;
 
-          if (widget.preSelectedTicket != null &&
-              _selectedTicket == null &&
-              availableTickets.isNotEmpty) {
-            final initialTicket = availableTickets.firstWhere(
+          if (availableTickets.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.receipt_long, size: 80, color: Colors.grey.shade400),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Nenhuma comanda disponível',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          Ticket? ticketToSelect;
+
+          if (widget.preSelectedTicket != null) {
+            ticketToSelect = availableTickets.firstWhere(
                   (t) => t.id == widget.preSelectedTicket!.id,
               orElse: () => availableTickets.first,
             );
+          } else if (_selectedTicket == null) {
+            ticketToSelect = availableTickets.first;
+          }
 
+          if (ticketToSelect != null && _selectedTicket != ticketToSelect) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted && _selectedTicket == null) {
-                setState(() => _selectedTicket = initialTicket);
+              if (mounted) {
+                setState(() {
+                  _selectedTicket = ticketToSelect;
+                  _ticketDetail = null;
+                });
+                _startFetchingDetails(ticketToSelect!);
               }
             });
           }
 
-          return Stepper(
-            type: StepperType.vertical,
-            currentStep: _currentStep,
-            onStepContinue: _onStepContinue,
-            onStepCancel: _onStepCancel,
-            steps: _buildSteps(availableTickets),
-            controlsBuilder: (context, details) {
-              return Padding(
-                padding: const EdgeInsets.only(top: 20.0),
-                child: Row(
-                  children: <Widget>[
-                    ElevatedButton.icon(
-                      onPressed: details.onStepContinue,
-                      // START FIX: Updated Icons for a cleaner, more modern look
-                      // icon: Icon(
-                      //   details.currentStep == 0
-                      //       ? Icons.chevron_right_rounded // Cleaner arrow for next step
-                      //       : Icons.check_circle, // Solid checkmark for final action
-                      // ),
-                      // END FIX
-                      label: Text(
-                        details.currentStep == 0
-                            ? '    Confirmar    '
-                            : 'Finalizar Pagamento',
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: details.currentStep == 0
-                            ? Theme.of(context).colorScheme.primary
-                            : Colors.green.shade700,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        textStyle: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+          return Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: Theme.of(context).colorScheme.copyWith(
+                primary: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+            child: Stepper(
+              type: StepperType.vertical,
+              currentStep: _currentStep,
+              onStepContinue: _onStepContinue,
+              onStepCancel: _onStepCancel,
+              steps: _buildSteps(availableTickets),
+              controlsBuilder: (context, details) {
+                final isLastStep = details.currentStep == 1;
+                return Padding(
+                  padding: const EdgeInsets.only(top: 24.0),
+                  child: Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: details.onStepContinue,
+                          icon: Icon(
+                            isLastStep ? Icons.check_circle : Icons.arrow_forward,
+                          ),
+                          label: Text(
+                            isLastStep ? 'Finalizar Pagamento' : 'Continuar',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isLastStep
+                                ? Colors.green.shade600
+                                : Theme.of(context).colorScheme.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            elevation: 2,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    TextButton(
-                      onPressed: details.onStepCancel,
-                      child: Text(
-                        details.currentStep == 0 ? 'Cancelar' : 'Voltar',
+                      const SizedBox(width: 12),
+                      TextButton(
+                        onPressed: details.onStepCancel,
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 16,
+                          ),
+                        ),
+                        child: Text(
+                          isLastStep ? 'Voltar' : 'Cancelar',
+                          style: const TextStyle(fontSize: 15),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              );
-            },
+                    ],
+                  ),
+                );
+              },
+            ),
           );
         },
       ),

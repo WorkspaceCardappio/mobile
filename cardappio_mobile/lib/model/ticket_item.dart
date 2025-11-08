@@ -1,34 +1,31 @@
-class TicketItem {
+// lib/model/product_order.dart (Sugestão: Crie este arquivo, ou renomeie o TicketItem)
 
+// Renomeado para ProductOrder para representar o item de linha (produto)
+// dentro do JSON de orders, antes de ser agregado.
+class ProductOrder {
+  // ID do item de linha, que no seu JSON é o ID do Pedido (Order ID)
   final String id;
-  final String productName;
+  final String name; // Nome do produto
   final int quantity;
-  final double unitPrice;
+  final double price; // Preço unitário
 
-  double get subtotal => unitPrice * quantity;
+  double get total => price * quantity;
 
-  TicketItem({
-    this.id = 'N/A',
-    required this.productName,
+  ProductOrder({
+    required this.id,
+    required this.name,
     required this.quantity,
-    required this.unitPrice
+    required this.price
   });
 
-  factory TicketItem.fromJson(Map<String, dynamic> json) {
-    return TicketItem(
+  factory ProductOrder.fromJson(Map<String, dynamic> json) {
+    return ProductOrder(
       id: json['id'] as String? ?? 'mock_order_id',
-      productName: json['productName'] as String? ?? 'Item Desconhecido',
-      quantity: json['quantity'] as int? ?? 0,
-      unitPrice: (json['unitPrice'] as num? ?? 0.0).toDouble(),
-    );
-  }
-
-  factory TicketItem.fromBackendFlutterTicketJson(Map<String, dynamic> json) {
-    return TicketItem(
-      id: 'N/A',
-      productName: json['name'] as String,
-      quantity: json['quantity'] as int,
-      unitPrice: (json['price'] as num).toDouble(),
+      name: json['name'] as String? ?? 'Item Desconhecido',
+      // ⭐️ Conversão segura
+      quantity: (json['quantity'] as num? ?? 0).toInt(),
+      // ⭐️ Conversão segura
+      price: (json['price'] as num? ?? 0.0).toDouble(),
     );
   }
 }

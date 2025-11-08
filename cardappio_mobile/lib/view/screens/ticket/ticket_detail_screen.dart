@@ -3,6 +3,8 @@ import 'package:intl/intl.dart';
 import '../../../data/api_service.dart';
 import '../../../model/ticket.dart';
 import '../../common/split_ticket_dialog.dart';
+// Note: Assumimos que ProductOrder está definido e é acessível
+import '../../../model/ticket_item.dart' hide ProductOrder;
 
 class TicketDetailScreen extends StatelessWidget {
   final Ticket ticket;
@@ -16,6 +18,11 @@ class TicketDetailScreen extends StatelessWidget {
     required this.onNavigateToPayment,
   });
 
+  // Cor de destaque verde para totais
+  static final Color modernGreen = Colors.green.shade600;
+  // Cor de destaque para ação de divisão
+  static final Color splitColor = Colors.orange.shade600;
+
   void _handleSplitTicket(BuildContext context, TicketDetail detail) async {
     final bool? splitSuccess = await showDialog<bool>(
       context: context,
@@ -27,7 +34,6 @@ class TicketDetailScreen extends StatelessWidget {
 
     if (splitSuccess == true) {
       if (context.mounted) {
-
         Navigator.pop(context, true);
       }
     }
@@ -36,15 +42,21 @@ class TicketDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Fundo neutro
       appBar: AppBar(
+        // Título alinhado à esquerda e cor neutra, sem sombra
         title: Text(
-          'Comanda #${ticket.id} - Mesa ${ticket.number}',
-          style: const TextStyle(fontSize: 18),
+          'Comanda ${ticket.number}',
+          style: TextStyle(
+            color: Colors.grey.shade800,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        elevation: 1,
+        elevation: 0,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        foregroundColor: Colors.black87,
       ),
       body: FutureBuilder<TicketDetail>(
-        // ⭐️ ALTERADO: Passando o objeto 'ticket' inteiro
         future: apiService.fetchTicketDetails(ticket),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -56,27 +68,27 @@ class TicketDetailScreen extends StatelessWidget {
               child: Text(
                 'Erro ao carregar detalhes: ${snapshot.error.toString().split(':').last.trim()}',
                 textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.red),
               ),
             );
           }
 
-          if (!snapshot.hasData) {
+          final TicketDetail? detail = snapshot.data;
+
+          if (detail == null) {
             return const Center(
               child: Text('Detalhes da comanda não encontrados.'),
             );
           }
 
-          final detail = snapshot.data!;
-          final dateFormat = DateFormat('dd/MM/yyyy HH:mm:ss');
+          final dateFormat = DateFormat('dd/MM/yyyy HH:mm');
           final formattedDate = dateFormat.format(detail.createdAt);
 
           return Column(
             children: [
               _buildHeader(context, detail, formattedDate),
-              const Divider(),
               _buildItemsHeader(context, detail),
               Expanded(child: _buildItemsList(context, detail)),
-
               _buildActionButtons(context, detail),
             ],
           );
@@ -85,84 +97,157 @@ class TicketDetailScreen extends StatelessWidget {
     );
   }
 
+  // ⭐️ HEADER: Mais clean, foco no Total
   Widget _buildHeader(
       BuildContext context,
       TicketDetail detail,
       String formattedDate,
       ) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
+    return Container(
+      width: double.infinity,
+      // Padding lateral ajustado e vertical para dar respiro
+      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 15.0),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        border: Border(
+          bottom: BorderSide(color: Colors.grey.shade200, width: 1.5),
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Subtítulo e data
           Text(
-            'Data de Abertura: $formattedDate',
-            style: TextStyle(color: Colors.grey[600]),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Total da Comanda:',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          Text(
-            'R\$ ${detail.total.toStringAsFixed(2)}',
-            style: Theme.of(context).textTheme.headlineMedium!.copyWith(
-              color: Theme.of(context).colorScheme.primary,
+            'Comanda Aberta em: $formattedDate',
+            style: TextStyle(
+              color: Colors.grey.shade600,
+              fontSize: 13,
             ),
+          ),
+          const SizedBox(height: 15),
+
+          // Total Geral em destaque
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Total a Pagar:',
+                style: Theme.of(context).textTheme.titleMedium!.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+              Text(
+                'R\$ ${detail.calculatedTotal.toStringAsFixed(2)}',
+                style: Theme.of(context).textTheme.headlineMedium!.copyWith(
+                  color: modernGreen,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 32, // Tamanho reduzido para ser mais sóbrio
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
+  // ⭐️ HEADER DA LISTA: Mais escuro e informativo
   Widget _buildItemsHeader(BuildContext context, TicketDetail detail) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+    final totalItemCount = detail.orders.expand((order) => order.items).length;
+
+    return Container(
+      width: double.infinity,
+      color: Colors.grey.shade100, // Fundo levemente cinza
+      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
       child: Text(
-        'Itens Pedidos (${detail.items.length}):',
-        style: Theme.of(context).textTheme.titleLarge!.copyWith(fontSize: 20),
+        'ITENS PEDIDOS ($totalItemCount)',
+        style: Theme.of(context).textTheme.titleSmall!.copyWith(
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+          color: Colors.grey.shade700,
+          letterSpacing: 0.5,
+        ),
       ),
     );
   }
 
+  // ⭐️ LISTA DE ITENS: Mais detalhada e separada
   Widget _buildItemsList(BuildContext context, TicketDetail detail) {
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      itemCount: detail.items.length,
-      itemBuilder: (context, index) {
-        final item = detail.items[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 10),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: Theme.of(context)
-                  .colorScheme
-                  .secondary
-                  .withOpacity(0.1),
-              child: Text(
-                '${item.quantity}x',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.secondary,
+    final List<ProductOrder> allProducts =
+    detail.orders.expand((order) => order.items).toList().cast<ProductOrder>();
+
+    return Container(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: ListView.separated( // Usando Separated para linha divisória
+        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 0),
+        itemCount: allProducts.length,
+        itemBuilder: (context, index) {
+          final item = allProducts[index];
+
+          return Container(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Quantidade/Ícone (Cor primária suave)
+                Container(
+                  width: 32,
+                  height: 32,
+                  margin: const EdgeInsets.only(right: 12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '${item.quantity}x',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.primary,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+
+                // Nome e Preço Unitário
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.name,
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'R\$ ${item.price.toStringAsFixed(2)} / un.',
+                        style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Subtotal
+                Text(
+                  'R\$ ${item.total.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    color: modernGreen,
+                  ),
+                ),
+              ],
             ),
-            title: Text(
-              item.productName,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-            subtitle: Text('R\$ ${item.unitPrice.toStringAsFixed(2)} / un.'),
-            trailing: Text(
-              'R\$ ${item.subtotal.toStringAsFixed(2)}',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-          ),
-        );
-      },
+          );
+        },
+        separatorBuilder: (context, index) => Divider(height: 1, color: Colors.grey.shade200),
+      ),
     );
   }
 
-
+  // ⭐️ BOTÕES DE AÇÃO: Pinned na parte inferior
   Widget _buildActionButtons(BuildContext context, TicketDetail detail) {
     return Container(
       padding: const EdgeInsets.all(16.0),
@@ -172,52 +257,52 @@ class TicketDetailScreen extends StatelessWidget {
         boxShadow: const [
           BoxShadow(
             color: Colors.black12,
-            blurRadius: 5,
-            offset: Offset(0, -2),
+            blurRadius: 10,
+            offset: Offset(0, -5),
           ),
         ],
       ),
       child: Row(
         children: [
-
           _buildSplitButton(context, detail),
-          const SizedBox(width: 10),
-
+          const SizedBox(width: 16),
           _buildPaymentButton(context, detail),
         ],
       ),
     );
   }
 
-
   Widget _buildSplitButton(BuildContext context, TicketDetail detail) {
     return Expanded(
       child: ElevatedButton.icon(
         onPressed: () => _handleSplitTicket(context, detail),
-        icon: const Icon(Icons.call_split),
+        icon: const Icon(Icons.call_split, size: 24),
         label: const Text('Dividir'),
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.orange.shade600,
+          backgroundColor: splitColor,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 15),
-          textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          textStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+          elevation: 3,
         ),
       ),
     );
   }
 
-
   Widget _buildPaymentButton(BuildContext context, TicketDetail detail) {
     return Expanded(
       child: ElevatedButton.icon(
         onPressed: () => onNavigateToPayment(ticket),
-        icon: const Icon(Icons.payment),
-        label: Text('Pagar (R\$ ${detail.total.toStringAsFixed(2)})'),
+        icon: const Icon(Icons.payment, size: 24),
+        label: Text('Pagar (R\$ ${detail.calculatedTotal.toStringAsFixed(2)})'),
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.green.shade600,
+          backgroundColor: modernGreen,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 15),
-          textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          textStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+          elevation: 3,
         ),
       ),
     );
