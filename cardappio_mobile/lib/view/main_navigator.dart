@@ -324,7 +324,7 @@ mixin _CartManager on State<MainNavigator> {
 
   void _removeItemFromCart(String productId) {
     setState(() {
-      _cartItems.removeWhere((item) => item.product.id == productId);
+      _cartItems.removeWhere((item) => item.product.idProductItem == productId);
     });
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -358,7 +358,7 @@ mixin _CartManager on State<MainNavigator> {
       }).toList();
 
       return OrderItemDTO(
-        productId: cartItem.product.id,
+        productId: cartItem.product.idProductItem,
         quantity: cartItem.quantity,
         variableId: cartItem.details['variable'] as String?,
         observations: cartItem.details['observations'] as String?,

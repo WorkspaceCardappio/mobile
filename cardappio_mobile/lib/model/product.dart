@@ -6,7 +6,8 @@ class ProductCategory {
 }
 
 class Product {
-  final String id;
+  final String idProductItem;
+  final String idProduct;
   final String name;
   final String description;
   final double price;
@@ -15,7 +16,8 @@ class Product {
   final String image;  // Campo para URL da imagem
 
   Product({
-    required this.id,
+    required this.idProductItem,
+    required this.idProduct,
     required this.name,
     required this.description,
     required this.price,
@@ -26,10 +28,8 @@ class Product {
 
   factory Product.fromJson(Map<String, dynamic> json) {
     return Product(
-      // ⭐️ CORREÇÃO FINAL: Usamos o 'idProduct' (que contém o ID base) para o campo 'id' no Flutter.
-      // Isso garante que o ProductDetailScreen.dart use o ID correto ao buscar variáveis.
-      id: json['idProduct'] as String? ?? json['idProductItem'] as String? ?? 'id_desconhecido',
-
+      idProductItem: json['idProductItem'] as String,
+      idProduct: json['idProduct'] as String,
       name: json['name'] as String,
       price: (json['price'] as num).toDouble(),
 

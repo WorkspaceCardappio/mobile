@@ -190,7 +190,7 @@ class CartScreen extends StatelessWidget {
                       // Lixeira (Maior)
                       IconButton(
                         icon: const Icon(Icons.delete_outline_rounded, color: Colors.red, size: deleteIconSize),
-                        onPressed: () => onRemoveItem(item.product.id),
+                        onPressed: () => onRemoveItem(item.product.idProductItem),
                         tooltip: 'Remover Item',
                       ),
                     ],

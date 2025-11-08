@@ -122,7 +122,7 @@ class ApiService {
 
 
   Future<void> createOrder(OrderCreateDTO order) async {
-    const endpoint = '$kBaseUrl/api/orders';
+    const endpoint = '$kBaseUrl/api/orders/flutter-orders';
     await _post(endpoint, order.toJson());
   }
 

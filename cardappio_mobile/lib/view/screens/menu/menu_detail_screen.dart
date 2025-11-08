@@ -212,7 +212,7 @@ class MenuDetailScreen extends StatelessWidget {
             children: [
               // ⭐️ IMAGEM DO PRODUTO COM DESIGN MODERNO
               Hero(
-                tag: 'product-${product.id}',
+                tag: 'product-${product.idProduct}',
                 child: Container(
                   width: 100,
                   height: 100,

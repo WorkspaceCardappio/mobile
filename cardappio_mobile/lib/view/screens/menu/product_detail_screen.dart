@@ -48,8 +48,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   Future<void> _fetchProductDetails() async {
     final results = await Future.wait([
-      widget.apiService.fetchProductVariables(widget.product.id),
-      widget.apiService.fetchProductAddOns(widget.product.id),
+      widget.apiService.fetchProductVariables(widget.product.idProduct),
+      widget.apiService.fetchProductAddOns(widget.product.idProduct),
     ]);
 
     final variables = results[0] as List<ProductVariable>;
@@ -288,7 +288,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         children: [
           // Imagem do produto
           Hero(
-            tag: 'product-${widget.product.id}',
+            tag: 'product-${widget.product.idProduct}',
             child: Container(
               height: 200,
               width: double.infinity,
@@ -914,7 +914,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       ..removeWhere((key, value) => value == 0);
 
     Navigator.pop(context, {
-      'product_id': widget.product.id,
+      'product_id': widget.product.idProductItem,
       'quantity': _quantity,
       'total_item': (_currentPrice * _quantity),
       'variable': _selectedVariableValue,
