@@ -288,7 +288,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         children: [
           // Imagem do produto
           Hero(
-            tag: 'product-${widget.product.id}',
+            tag: 'product-${widget.product.idProduct}',
             child: Container(
               height: 200,
               width: double.infinity,
