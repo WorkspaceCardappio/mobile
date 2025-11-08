@@ -35,6 +35,7 @@ class OrderCreateDTO {
 class OrderItemDTO {
   final String productId;
   final int quantity;
+  final double lineTotal;
   final String? variableId;
   final String? observations;
   final List<OrderItemAdditionalDTO> additionals;
@@ -42,6 +43,7 @@ class OrderItemDTO {
   OrderItemDTO({
     required this.productId,
     required this.quantity,
+    required this.lineTotal,
     this.variableId,
     this.observations,
     required this.additionals,
@@ -50,6 +52,7 @@ class OrderItemDTO {
   Map<String, dynamic> toJson() => {
     'productId': productId,
     'quantity': quantity,
+    'lineTotal': lineTotal,
     'variableId': variableId,
     'observations': observations,
     'additionals': additionals.map((add) => add.toJson()).toList(),

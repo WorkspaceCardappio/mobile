@@ -357,9 +357,12 @@ mixin _CartManager on State<MainNavigator> {
         );
       }).toList();
 
+      print(cartItem);
+
       return OrderItemDTO(
         productId: cartItem.product.idProductItem,
         quantity: cartItem.quantity,
+        lineTotal: cartItem.lineTotal,
         variableId: cartItem.details['variable'] as String?,
         observations: cartItem.details['observations'] as String?,
         additionals: additionalDtos,
