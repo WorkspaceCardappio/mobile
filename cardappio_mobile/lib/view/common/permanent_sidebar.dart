@@ -68,7 +68,7 @@ class PermanentSidebar extends StatelessWidget {
                     key: ValueKey('menu_group_$selectedIndex'),
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildSidebarItem(context, 0, Icons.menu_book, 'Caardápio', selectedIndex, onTap),
+                      _buildSidebarItem(context, 0, Icons.menu_book, 'Cardápio', selectedIndex, onTap),
 
                       // 1.2. SUB-MENU DE CATEGORIAS
                       SidebarCategoryMenu(
