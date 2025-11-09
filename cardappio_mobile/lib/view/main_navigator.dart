@@ -343,7 +343,7 @@ mixin _CartManager on State<MainNavigator> {
 
     final selectedTicket = await showDialog<Ticket>(
       context: context,
-      builder: (_) => TicketSelectionDialog(),
+      builder: (_) => TicketSelectionDialog(apiService: _apiService),
     );
 
     if (selectedTicket == null) return;
