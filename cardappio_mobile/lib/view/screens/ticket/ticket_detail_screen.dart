@@ -279,7 +279,7 @@ class TicketDetailScreen extends StatelessWidget {
         icon: const Icon(Icons.call_split, size: 24),
         label: const Text('Dividir'),
         style: ElevatedButton.styleFrom(
-          backgroundColor: splitColor,
+          backgroundColor: Theme.of(context).colorScheme.primary,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 15),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

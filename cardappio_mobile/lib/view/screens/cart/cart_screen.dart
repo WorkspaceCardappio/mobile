@@ -21,6 +21,7 @@ class CartScreen extends StatelessWidget {
 
   // WIDGET: Cabeçalho da Tela (Para uniformidade)
   Widget _buildScreenHeader(BuildContext context) {
+    // Usando Theme.of(context).colorScheme.secondary como fallback para a cor de acentuação
     final Color accentColor = Theme.of(context).colorScheme.secondary;
 
     return Padding(
@@ -44,34 +45,62 @@ class CartScreen extends StatelessWidget {
 
   // ⭐️ WIDGET: Total como Item Final da Lista (Não Pinned)
   Widget _buildTotalSummaryItem(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 25.0, bottom: 25.0, left: 16.0, right: 16.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            'Total do Pedido:',
-            style: Theme.of(context).textTheme.titleLarge!.copyWith(
-              color: Theme.of(context).colorScheme.onSurface,
-              fontWeight: FontWeight.w700, // Levemente mais forte
+    final Color accentColor = modernGreen;
+    final Color lightBackground = modernGreen.withOpacity(0.08);
+
+    return Card(
+      elevation: 3, // Elevação sutil para destaque
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: const EdgeInsets.only(top: 25.0, bottom: 25.0),
+      child: Container(
+        padding: const EdgeInsets.all(20.0),
+        decoration: BoxDecoration(
+          color: lightBackground, // Fundo claro para sobriedade
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.payment_outlined, color: accentColor, size: 28),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Total do Pedido',
+                      style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                        color: accentColor,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 20, // Fonte do título levemente reduzida
+                      ),
+                    ),
+                  ],
+                ),
+                // Valor Total em Verde Sóbrio e Destaque
+                Text(
+                  'R\$ ${cartTotal.toStringAsFixed(2)}',
+                  style: Theme.of(context).textTheme.headlineMedium!.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: accentColor,
+                    fontSize: 28, // Reduzido para ser mais moderno/sobrio
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ],
             ),
-          ),
-          // Valor Total em Verde Sóbrio e Destaque
-          Text(
-            'R\$ ${cartTotal.toStringAsFixed(2)}',
-            style: Theme.of(context).textTheme.headlineMedium!.copyWith(
-              fontWeight: FontWeight.w900,
-              color: modernGreen,
-              fontSize: 34, // Aumentado para destaque
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   // ⭐️ WIDGET: Ação Final (Apenas o Botão, Sem Sombra no Contêiner)
   Widget _buildActionButton(BuildContext context) {
+    // O botão só é mostrado se houver itens no carrinho
+    if (cartItems.isEmpty) return const SizedBox.shrink();
+
     return Container(
       // Removida a sombra e a decoração da parte inferior
       color: Theme.of(context).colorScheme.surface,
@@ -98,23 +127,43 @@ class CartScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+
+    // --- Lógica para Carrinho VAZIO (CORREÇÃO APLICADA) ---
     if (cartItems.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildScreenHeader(context),
-            const Divider(),
-            Icon(Icons.shopping_cart_outlined, size: 100, color: Colors.grey.shade400),
-            const SizedBox(height: 16),
-            const Text('Seu carrinho está vazio! 🛒', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.grey)),
-            const SizedBox(height: 8),
-            Text('Adicione itens do cardápio para fazer o pedido.', style: TextStyle(color: Colors.grey.shade600)),
-          ],
-        ),
+      return Column( // 🎯 CORREÇÃO: Usar Column para colocar o header no topo e centralizar o conteúdo vazio.
+        children: [
+          _buildScreenHeader(context),
+          const Divider(height: 0),
+          Expanded( // Usa o espaço restante para centralizar o aviso
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                      Icons.shopping_cart_outlined,
+                      size: 100,
+                      color: Colors.grey.shade400
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                      'Seu carrinho está vazio! 🛒',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.grey)
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                      'Adicione itens do cardápio para fazer o pedido.',
+                      style: TextStyle(color: Colors.grey.shade600)
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // O Botão de Ação não aparece aqui, pois _buildActionButton retorna SizedBox.shrink()
+        ],
       );
     }
 
+    // --- Lógica para Carrinho COM ITENS ---
     return Column(
       children: [
         _buildScreenHeader(context),
@@ -134,13 +183,13 @@ class CartScreen extends StatelessWidget {
               // ⭐️ Itens do Carrinho (Maiores)
               final item = cartItems[index];
               return Card(
-                // Sombra Mínima entre os itens
-                elevation: 1,
-                shadowColor: Colors.black.withOpacity(0.08),
+                // 🎯 ALTERAÇÃO: Elevação 2 e sombra mais perceptível para altura
+                elevation: 2,
+                shadowColor: Colors.grey.shade500.withOpacity(0.3),
                 margin: const EdgeInsets.only(bottom: 15),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 child: ListTile(
-                  // Aumenta o padding vertical para item maior
+                  // Mantendo o padding (vertical: 12) para altura consistente
                   contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
 
                   // Quantidade/Ícone
@@ -158,7 +207,8 @@ class CartScreen extends StatelessWidget {
 
                   // Nome do Produto e Preço Unitário
                   title: Padding(
-                    padding: const EdgeInsets.only(bottom: 4.0),
+                    // 🎯 ADICIONADO ESPAÇO: Aumentando o padding inferior para forçar mais altura
+                    padding: const EdgeInsets.only(bottom: 8.0),
                     child: Text(item.product.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18)), // Fonte maior
                   ),
                   subtitle: Text('R\$ ${(item.lineTotal / item.quantity).toStringAsFixed(2)} / un.', style: TextStyle(color: Colors.grey.shade600, fontSize: 15)),
@@ -201,7 +251,7 @@ class CartScreen extends StatelessWidget {
           ),
         ),
 
-        // ⭐️ Botão de Ação Pinned (Sem total)
+        // ⭐️ Botão de Ação Pinned
         _buildActionButton(context),
       ],
     );

@@ -58,7 +58,7 @@ class _TicketScreenState extends State<TicketScreen> {
     }
   }
 
-  // ⭐️ NOVO WIDGET: Ícone de Comanda Sutil (Substituindo o Stack complexo)
+  // ⭐️ Ícone de Comanda Sutil (Substituindo o Stack complexo)
   Widget _buildTicketLeading(BuildContext context, int ticketNumber) {
     final Color primaryColor = Theme.of(context).colorScheme.primary;
 
@@ -83,35 +83,41 @@ class _TicketScreenState extends State<TicketScreen> {
   }
 
 
+  // ⭐️ WIDGET: Cabeçalho da Tela (Novo padrão)
+  Widget _buildScreenHeader(BuildContext context, Color accentColor) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Comandas Abertas',
+            style: Theme.of(context).textTheme.headlineMedium!.copyWith(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: accentColor,
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.refresh, size: 28, color: accentColor.withOpacity(0.7)),
+            onPressed: _reloadTickets,
+            tooltip: 'Recarregar Comandas',
+          ),
+        ],
+      ),
+    );
+  }
+
+
   @override
   Widget build(BuildContext context) {
     // ⭐️ COR SECUNDÁRIA MODERNA: Verde claro sóbrio
-    final Color modernGreen = Colors.green.shade400;
+    final Color modernGreen = Colors.green.shade700; // Ajustei para shade700 para manter a consistência do outro código
     final Color accentColor = Theme.of(context).colorScheme.secondary;
 
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Comandas Abertas',
-                style: Theme.of(context).textTheme.headlineMedium!.copyWith(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: accentColor,
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.refresh, size: 28),
-                onPressed: _reloadTickets,
-                tooltip: 'Recarregar Comandas',
-              ),
-            ],
-          ),
-        ),
+        _buildScreenHeader(context, accentColor), // Usando o novo widget de cabeçalho
         const Divider(height: 0),
         Expanded(
           child: FutureBuilder<List<Ticket>>(
@@ -136,51 +142,53 @@ class _TicketScreenState extends State<TicketScreen> {
                 itemCount: tickets.length,
                 itemBuilder: (context, index) {
                   final ticket = tickets[index];
-                  // Formato de data mais limpo (sem segundos)
                   final dateFormat = DateFormat('dd/MM/yyyy • HH:mm');
                   final formattedDate = dateFormat.format(ticket.createdAt);
 
                   return Card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    elevation: 3,
+                    margin: const EdgeInsets.only(bottom: 15), // Aumento na margem para separação
+                    elevation: 1, // Sombra sutil
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16), // Aumento no padding
 
                       // ⭐️ LEADING: Ícone de número customizado
                       leading: _buildTicketLeading(context, ticket.number),
 
-                      // ⭐️ TÍTULO PROFISSIONAL E LIMPO
-                      // title: Text(
-                      //   'Comanda #${ticket.number}',
-                      //   style: Theme.of(context).textTheme.titleMedium!.copyWith(
-                      //     fontWeight: FontWeight.w600,
-                      //     fontSize: 17,
-                      //   ),
-                      // ),
+                      // ⭐️ TÍTULO PROFISSIONAL E LIMPO (Número da Comanda)
+                      title: Padding(
+                        padding: const EdgeInsets.only(bottom: 4.0),
+                        child: Text(
+                          'Comanda ${ticket.number}',
+                          style: Theme.of(context).textTheme.titleMedium!.copyWith(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 18,
+                          ),
+                        ),
+                      ),
 
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // ⭐️ DESTAQUE DO TOTAL (Verde Moderno)
+                          // ⭐️ DESTAQUE DO TOTAL (Verde Moderno, Tamanho maior)
                           Text(
                             'Total: R\$ ${ticket.total.toStringAsFixed(2)}',
                             style: TextStyle(
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w800,
                               fontSize: 16,
-                              color: modernGreen, // ⭐️ Aplicação da nova cor
+                              color: modernGreen,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 6), // Espaçamento
                           // DATA FORMATADA
                           Row(
                             children: [
                               Icon(Icons.access_time, size: 14, color: Colors.grey.shade500),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: 6),
                               Text(
                                 formattedDate,
                                 style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: 14,
                                   color: Colors.grey.shade600,
                                 ),
                               ),
@@ -189,10 +197,11 @@ class _TicketScreenState extends State<TicketScreen> {
                         ],
                       ),
 
+                      // ⭐️ TRAILING: Ícone de navegação
                       trailing: Icon(
-                        Icons.chevron_right_rounded,
-                        size: 24,
-                        color: modernGreen, // ⭐️ Aplicação da nova cor
+                        Icons.arrow_forward_ios_rounded,
+                        size: 20,
+                        color: Colors.grey.shade400, // Cor mais neutra para sobriedade
                       ),
                       onTap: () => _openTicketDetails(ticket),
                     ),

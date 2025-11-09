@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../data/api_service.dart';
 import '../../../model/ticket.dart';
+// Mantendo a importação original para evitar reintroduzir o erro de tipagem
 import '../../../model/ticket_item.dart' hide ProductOrder;
 
 class PaymentScreen extends StatefulWidget {
@@ -821,10 +822,73 @@ class _PaymentScreenState extends State<PaymentScreen> {
               steps: _buildSteps(availableTickets),
               controlsBuilder: (context, details) {
                 final isLastStep = details.currentStep == 1;
+                final isFirstStep = details.currentStep == 0;
+
+                // 1. Ocultar o botão "Cancelar" no Step 1
+                if (isFirstStep) {
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 24.0),
+                    child: Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: details.onStepContinue,
+                            icon: const Icon(Icons.arrow_forward),
+                            label: const Text(
+                              'Continuar',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Theme.of(context).colorScheme.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              elevation: 2,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                // 2. Trocar a ordem e usar Expanded ElevatedButton para tamanhos similares no Step 2 (Finalizar)
                 return Padding(
                   padding: const EdgeInsets.only(top: 24.0),
                   child: Row(
                     children: <Widget>[
+                      // Botão VOLTAR (ElevatedButton na Esquerda, Tamanho similar)
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: details.onStepCancel, // Usa o onStepCancel para Voltar
+                          icon: const Icon(Icons.arrow_back),
+                          label: Text(
+                            isLastStep ? 'Voltar' : 'Cancelar',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Theme.of(context).colorScheme.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            elevation: 2,
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 12),
+
+                      // Botão CONTINUAR/FINALIZAR (ElevatedButton na Direita, Tamanho similar)
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: details.onStepContinue,
@@ -849,20 +913,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
                             ),
                             elevation: 2,
                           ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      TextButton(
-                        onPressed: details.onStepCancel,
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 16,
-                          ),
-                        ),
-                        child: Text(
-                          isLastStep ? 'Voltar' : 'Cancelar',
-                          style: const TextStyle(fontSize: 15),
                         ),
                       ),
                     ],

@@ -208,52 +208,82 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     onStepContinue: _onStepContinue,
                     onStepCancel: _onStepCancel,
                     steps: _buildSteps(),
+
+                    // 🎯 CONTROLS BUILDER CORRIGIDO
                     controlsBuilder: (context, details) {
-                      final isLastStep = details.currentStep == _buildSteps().length - 1;
+                      final steps = _buildSteps();
+                      final isLastStep = details.currentStep == steps.length - 1;
+                      final isFirstStep = details.currentStep == 0;
+
+                      // Conteúdo principal do botão Continuar/Finalizar
+                      Widget continueButton = Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: details.onStepContinue,
+                          icon: Icon(
+                            isLastStep ? Icons.shopping_cart : Icons.arrow_forward,
+                          ),
+                          label: Text(
+                            isLastStep ? 'Adicionar ao Carrinho' : 'Continuar',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isLastStep
+                                ? Colors.green.shade600
+                                : colorScheme.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            elevation: 2,
+                          ),
+                        ),
+                      );
+
+                      // Se for o Step 1, retorna apenas o botão Continuar
+                      if (isFirstStep) {
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 24.0),
+                          child: Row(
+                            children: [continueButton],
+                          ),
+                        );
+                      }
+
+                      // Para Steps intermediários e o último Step, retorna Voltar e Continuar/Finalizar
+                      Widget backButton = Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: details.onStepCancel,
+                          icon: const Icon(Icons.arrow_back),
+                          label: const Text(
+                            'Voltar',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Theme.of(context).colorScheme.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            elevation: 2,
+                          ),
+                        ),
+                      );
+
                       return Padding(
                         padding: const EdgeInsets.only(top: 24.0),
                         child: Row(
                           children: <Widget>[
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: details.onStepContinue,
-                                icon: Icon(
-                                  isLastStep ? Icons.shopping_cart : Icons.arrow_forward,
-                                ),
-                                label: Text(
-                                  isLastStep ? 'Adicionar ao Carrinho' : 'Continuar',
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: isLastStep
-                                      ? Colors.green.shade600
-                                      : colorScheme.primary,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  elevation: 2,
-                                ),
-                              ),
-                            ),
+                            backButton, // Botão Voltar (Esquerda)
                             const SizedBox(width: 12),
-                            TextButton(
-                              onPressed: details.onStepCancel,
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                  vertical: 16,
-                                ),
-                              ),
-                              child: Text(
-                                details.currentStep == 0 ? 'Cancelar' : 'Voltar',
-                                style: const TextStyle(fontSize: 15),
-                              ),
-                            ),
+                            continueButton, // Botão Continuar/Finalizar (Direita)
                           ],
                         ),
                       );
