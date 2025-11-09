@@ -171,14 +171,14 @@ class _TicketScreenState extends State<TicketScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // ⭐️ DESTAQUE DO TOTAL (Verde Moderno, Tamanho maior)
-                          Text(
-                            'Total: R\$ ${ticket.total.toStringAsFixed(2)}',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 16,
-                              color: modernGreen,
-                            ),
-                          ),
+                          // Text(
+                          //   'Total: R\$ ${ticket.total.toStringAsFixed(2)}',
+                          //   style: TextStyle(
+                          //     fontWeight: FontWeight.w800,
+                          //     fontSize: 16,
+                          //     color: modernGreen,
+                          //   ),
+                          // ),
                           const SizedBox(height: 6), // Espaçamento
                           // DATA FORMATADA
                           Row(
