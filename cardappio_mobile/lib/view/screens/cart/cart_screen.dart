@@ -15,13 +15,13 @@ class CartScreen extends StatelessWidget {
     required this.onConfirmOrder,
   });
 
-  // ⭐️ Cor de destaque sóbria e tamanho do ícone de exclusão
+
   static final Color modernGreen = Colors.green.shade700;
   static const double deleteIconSize = 30.0;
 
-  // WIDGET: Cabeçalho da Tela (Para uniformidade)
+
   Widget _buildScreenHeader(BuildContext context) {
-    // Usando Theme.of(context).colorScheme.secondary como fallback para a cor de acentuação
+
     final Color accentColor = Theme.of(context).colorScheme.secondary;
 
     return Padding(
@@ -43,19 +43,20 @@ class CartScreen extends StatelessWidget {
     );
   }
 
-  // ⭐️ WIDGET: Total como Item Final da Lista (Não Pinned)
+
   Widget _buildTotalSummaryItem(BuildContext context) {
     final Color accentColor = modernGreen;
     final Color lightBackground = modernGreen.withOpacity(0.08);
 
     return Card(
-      elevation: 3, // Elevação sutil para destaque
+      elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       margin: const EdgeInsets.only(top: 25.0, bottom: 25.0),
       child: Container(
         padding: const EdgeInsets.all(20.0),
         decoration: BoxDecoration(
-          color: lightBackground, // Fundo claro para sobriedade
+          color: lightBackground,
+
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -73,18 +74,20 @@ class CartScreen extends StatelessWidget {
                       style: Theme.of(context).textTheme.titleLarge!.copyWith(
                         color: accentColor,
                         fontWeight: FontWeight.w700,
-                        fontSize: 20, // Fonte do título levemente reduzida
+                        fontSize: 20,
+
                       ),
                     ),
                   ],
                 ),
-                // Valor Total em Verde Sóbrio e Destaque
+
                 Text(
                   'R\$ ${cartTotal.toStringAsFixed(2)}',
                   style: Theme.of(context).textTheme.headlineMedium!.copyWith(
                     fontWeight: FontWeight.w900,
                     color: accentColor,
-                    fontSize: 28, // Reduzido para ser mais moderno/sobrio
+                    fontSize: 28,
+
                     letterSpacing: -0.5,
                   ),
                 ),
@@ -96,13 +99,13 @@ class CartScreen extends StatelessWidget {
     );
   }
 
-  // ⭐️ WIDGET: Ação Final (Apenas o Botão, Sem Sombra no Contêiner)
+
   Widget _buildActionButton(BuildContext context) {
-    // O botão só é mostrado se houver itens no carrinho
+
     if (cartItems.isEmpty) return const SizedBox.shrink();
 
     return Container(
-      // Removida a sombra e a decoração da parte inferior
+
       color: Theme.of(context).colorScheme.surface,
       padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 16.0), // Padding ajustado
       child: SizedBox(
@@ -128,13 +131,15 @@ class CartScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
 
-    // --- Lógica para Carrinho VAZIO (CORREÇÃO APLICADA) ---
+
     if (cartItems.isEmpty) {
-      return Column( // 🎯 CORREÇÃO: Usar Column para colocar o header no topo e centralizar o conteúdo vazio.
+      return Column(
+
         children: [
           _buildScreenHeader(context),
           const Divider(height: 0),
-          Expanded( // Usa o espaço restante para centralizar o aviso
+          Expanded(
+
             child: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -158,12 +163,12 @@ class CartScreen extends StatelessWidget {
               ),
             ),
           ),
-          // O Botão de Ação não aparece aqui, pois _buildActionButton retorna SizedBox.shrink()
+
         ],
       );
     }
 
-    // --- Lógica para Carrinho COM ITENS ---
+
     return Column(
       children: [
         _buildScreenHeader(context),
@@ -172,27 +177,27 @@ class CartScreen extends StatelessWidget {
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.all(16.0),
-            itemCount: cartItems.length + 1, // +1 para o item do Total
+            itemCount: cartItems.length + 1,
             itemBuilder: (context, index) {
 
-              // ⭐️ Item de Resumo do Total (Fica no final da lista)
+
               if (index == cartItems.length) {
                 return _buildTotalSummaryItem(context);
               }
 
-              // ⭐️ Itens do Carrinho (Maiores)
+
               final item = cartItems[index];
               return Card(
-                // 🎯 ALTERAÇÃO: Elevação 2 e sombra mais perceptível para altura
+
                 elevation: 2,
                 shadowColor: Colors.grey.shade500.withOpacity(0.3),
                 margin: const EdgeInsets.only(bottom: 15),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 child: ListTile(
-                  // Mantendo o padding (vertical: 12) para altura consistente
+
                   contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
 
-                  // Quantidade/Ícone
+
                   leading: Container(
                     width: 45,
                     height: 45,
@@ -205,19 +210,19 @@ class CartScreen extends StatelessWidget {
                     ),
                   ),
 
-                  // Nome do Produto e Preço Unitário
+
                   title: Padding(
-                    // 🎯 ADICIONADO ESPAÇO: Aumentando o padding inferior para forçar mais altura
+
                     padding: const EdgeInsets.only(bottom: 8.0),
                     child: Text(item.product.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18)), // Fonte maior
                   ),
                   subtitle: Text('R\$ ${(item.lineTotal / item.quantity).toStringAsFixed(2)} / un.', style: TextStyle(color: Colors.grey.shade600, fontSize: 15)),
 
-                  // Total e Lixeira
+
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Subtotal
+
                       Padding(
                         padding: const EdgeInsets.only(right: 18.0),
                         child: Column(
@@ -237,7 +242,6 @@ class CartScreen extends StatelessWidget {
                         ),
                       ),
 
-                      // Lixeira (Maior)
                       IconButton(
                         icon: const Icon(Icons.delete_outline_rounded, color: Colors.red, size: deleteIconSize),
                         onPressed: () => onRemoveItem(item.product.idProductItem),
@@ -251,7 +255,6 @@ class CartScreen extends StatelessWidget {
           ),
         ),
 
-        // ⭐️ Botão de Ação Pinned
         _buildActionButton(context),
       ],
     );

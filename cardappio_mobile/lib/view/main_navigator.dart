@@ -70,9 +70,9 @@ class _MainNavigatorState extends State<MainNavigator>
     }
   }
 
-  // Novo método que simula o botão "Iniciar Pedido" da Home.
+
   Future<void> _performQuickOrder() async {
-    // Note: Se necessário, você pode adicionar uma sobreposição de loading aqui.
+
     try {
       final List<Menu> menus = await _apiService.fetchMenus();
       final Menu? activeMenu = menus.isNotEmpty
@@ -80,7 +80,7 @@ class _MainNavigatorState extends State<MainNavigator>
           : null;
 
       if (activeMenu != null) {
-        // Se encontrar o menu, chama o método que navega e carrega categorias.
+
         _handleMenuFound(activeMenu);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -97,21 +97,21 @@ class _MainNavigatorState extends State<MainNavigator>
     }
   }
 
-  // Método chamado quando um menu é encontrado (pela Home ou pelo Sidebar)
+
   void _handleMenuFound(Menu menu) {
     setState(() {
       _activeMenu = menu;
-      _selectedIndex = 0; // Vai para a tela de Cardápio/Menu
+      _selectedIndex = 0;
     });
     _loadCategories(menu.id);
   }
 
   void _initializeScreens() {
     _screens = [
-      _buildCurrentMenuScreen(), // Índice 0: Cardápio/Menu
-      _buildCartScreen(),        // Índice 1: Carrinho
-      HomeScreen(                // Índice 2: Home
-        // Home agora chama o método que busca e navega
+      _buildCurrentMenuScreen(),
+      _buildCartScreen(),
+      HomeScreen(
+
         onQuickOrder: (menu) => _performQuickOrder(),
         apiService: _apiService,
       ),
@@ -164,9 +164,9 @@ class _MainNavigatorState extends State<MainNavigator>
             selectedIndex: _selectedIndex,
             cartItemCount: _cartItemCount,
             onTap: (index) {
-              // Verifica se o índice é o Cardápio (0) e se não há menu ativo.
+
               if (index == 0 && _activeMenu == null) {
-                // Ao invés de ir para a Home (índice 2), ele TENTA iniciar o pedido.
+
                 _performQuickOrder();
 
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -177,7 +177,7 @@ class _MainNavigatorState extends State<MainNavigator>
                   ),
                 );
               } else {
-                // Navegação normal se houver menu ativo ou se o índice não for 0.
+
                 _onMenuItemTapped(index);
               }
             },
@@ -207,7 +207,7 @@ class _MainNavigatorState extends State<MainNavigator>
           children: [
             Icon(Icons.menu_book, size: 60, color: Colors.grey),
             SizedBox(height: 16),
-            // Mensagem alterada, pois agora tentamos buscar o menu ao clicar em "Cardápio".
+
             Text(
               'Aguarde enquanto o cardápio é carregado.',
               style: TextStyle(fontSize: 18),

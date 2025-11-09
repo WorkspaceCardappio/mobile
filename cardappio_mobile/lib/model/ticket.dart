@@ -1,10 +1,5 @@
 import 'package:flutter/foundation.dart';
 
-// ====================================================================
-// ESTRUTURAS AUXILIARES PARA AGRUPAMENTO POR PEDIDO (ORDER)
-// (Mantidas as correções anteriores)
-// ====================================================================
-
 @immutable
 class ProductOrder {
   final String id;
@@ -47,9 +42,6 @@ class AggregatedOrder {
   }
 }
 
-// ====================================================================
-// CLASSE BASE: TICKET
-// ====================================================================
 
 class Ticket {
   final String id;
@@ -93,9 +85,6 @@ class Ticket {
   }
 }
 
-// ====================================================================
-// CLASSE DE DETALHE: TICKETDETAIL (CORRIGIDA)
-// ====================================================================
 
 class TicketDetail extends Ticket {
   final List<AggregatedOrder> orders;
@@ -103,11 +92,11 @@ class TicketDetail extends Ticket {
   TicketDetail({
     required super.id,
     required super.number,
-    // ❌ REMOVIDO: O 'required super.total' foi removido
+
     required super.createdAt,
     required this.orders,
   }) : super(
-    // ⭐️ CORREÇÃO: total é passado APENAS AQUI, calculado.
+
     total: orders.fold(0.0, (sum, order) => sum + order.subtotal),
   );
 
@@ -116,7 +105,6 @@ class TicketDetail extends Ticket {
     return orders.fold(0.0, (sum, order) => sum + order.subtotal);
   }
 
-  // Mantendo este factory (agora sem dependência de TicketItem)
   factory TicketDetail.fromJson(Map<String, dynamic> json) {
     final baseTicket = Ticket.fromJson(json);
 
@@ -124,11 +112,10 @@ class TicketDetail extends Ticket {
       id: baseTicket.id,
       number: baseTicket.number,
       createdAt: baseTicket.createdAt,
-      orders: [], // Retorna orders vazio
+      orders: [],
     );
   }
 
-  // ⭐️ FACTORY USADO PELA API (Contém a lógica de agregação)
   factory TicketDetail.fromBackendFlutterTicketJson({
     required Map<String, dynamic> json,
     required Ticket baseTicket,
@@ -158,7 +145,7 @@ class TicketDetail extends Ticket {
       number: baseTicket.number,
       createdAt: baseTicket.createdAt,
       orders: aggregatedOrders,
-      // O 'total' é calculado e passado automaticamente via construtor acima!
+
     );
   }
 }

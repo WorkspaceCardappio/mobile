@@ -18,13 +18,13 @@ class SplitTicketDialog extends StatefulWidget {
 }
 
 class _SplitTicketDialogState extends State<SplitTicketDialog> {
-  final Set<String> _selectedOrderIds = {}; // IDs dos PEDIDOS selecionados
-  bool _isProcessingSplit = false; // Estado para desabilitar botões durante o processamento
+  final Set<String> _selectedOrderIds = {};
+  bool _isProcessingSplit = false;
 
   @override
   void initState() {
     super.initState();
-    // A chamada a _fetchAvailableTickets não é mais necessária!
+
   }
 
   void _toggleOrderSelection(String orderId) {
@@ -54,7 +54,7 @@ class _SplitTicketDialogState extends State<SplitTicketDialog> {
 
     setState(() => _isProcessingSplit = true);
 
-    // O destino é sempre nulo para criar uma nova comanda.
+
     final SplitOrdersDTO splitData = SplitOrdersDTO(
       orders: _selectedOrderIds,
       ticket: null,
@@ -68,7 +68,8 @@ class _SplitTicketDialogState extends State<SplitTicketDialog> {
 
       _showSnackBar('✅ Divisão realizada com sucesso!');
       if (mounted) {
-        Navigator.pop(context, true); // Retorna true para indicar sucesso e recarregar
+        Navigator.pop(context, true);
+
       }
     } catch (e) {
       _showSnackBar('❌ Erro na divisão: ${e.toString().split(':').last.trim()}', isError: true);
@@ -91,7 +92,6 @@ class _SplitTicketDialogState extends State<SplitTicketDialog> {
     }
   }
 
-  // --- WIDGETS DE CONSTRUÇÃO ---
 
   @override
   Widget build(BuildContext context) {
@@ -102,7 +102,7 @@ class _SplitTicketDialogState extends State<SplitTicketDialog> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // ⭐️ Header Customizado (Cor Primary do Tema)
+
           _buildHeader(context),
 
           Expanded(
@@ -112,7 +112,7 @@ class _SplitTicketDialogState extends State<SplitTicketDialog> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Informações da Comanda Original
+
                   Text(
                     'Comanda: #${widget.currentTicket.number}',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -192,7 +192,8 @@ class _SplitTicketDialogState extends State<SplitTicketDialog> {
     }
 
     final Color primaryColor = Theme.of(context).colorScheme.primary;
-    final Color accentColor = Colors.orange.shade600; // Usando laranja como cor de alerta/seleção
+    final Color accentColor = Colors.orange.shade600;
+
 
     return Column(
       children: widget.currentTicket.orders.map((order) {
@@ -217,7 +218,7 @@ class _SplitTicketDialogState extends State<SplitTicketDialog> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Ícone de Seleção
+
                   Icon(
                     isSelected ? Icons.check_circle_rounded : Icons.radio_button_off,
                     color: isSelected ? accentColor : Colors.grey.shade400,
@@ -225,7 +226,7 @@ class _SplitTicketDialogState extends State<SplitTicketDialog> {
                   ),
                   const SizedBox(width: 16),
 
-                  // Detalhes do Pedido
+
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -242,13 +243,13 @@ class _SplitTicketDialogState extends State<SplitTicketDialog> {
                     ),
                   ),
 
-                  // Valor
+
                   Text(
                     'R\$ ${order.subtotal.toStringAsFixed(2)}',
                     style: TextStyle(
                       fontWeight: FontWeight.w900,
                       fontSize: 18,
-                      color: Colors.green.shade600, // Destaque Verde para valor
+                      color: Colors.green.shade600,
                     ),
                   ),
                 ],

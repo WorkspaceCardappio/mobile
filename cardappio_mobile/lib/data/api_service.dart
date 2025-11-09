@@ -8,7 +8,6 @@ import '../model/order_create_dto.dart';
 import '../model/product.dart';
 import '../model/split_orders_dto.dart';
 import '../model/ticket.dart';
-import '../model/ticket_item.dart'; // Garantindo que todos os modelos sejam importados (se ticket_item foi renomeado, ajuste o caminho)
 
 class ApiService {
   final http.Client _client;
@@ -16,6 +15,7 @@ class ApiService {
   ApiService({http.Client? client}) : _client = client ?? http.Client();
 
   Future<dynamic> _get(String endpoint) async {
+
     try {
       final response = await _client.get(Uri.parse(endpoint));
       if (response.statusCode == 200) {
@@ -26,6 +26,7 @@ class ApiService {
     } catch (e) {
       throw Exception('Erro de conexão: ${e.toString()}');
     }
+
   }
 
   Future<void> _post(String endpoint, Map<String, dynamic> data) async {
@@ -75,27 +76,26 @@ class ApiService {
     if (categoryId.isEmpty) return [];
     final endpoint = '$kProductsEndpoint/$categoryId/flutter-products';
     final List<dynamic> productsJson = await _get(endpoint);
-    // ✅ Este método deve estar correto se Product.fromJson estiver OK.
+
     return productsJson.map((json) => Product.fromJson(json)).toList();
   }
 
   Future<List<Category>> fetchCategories(String menuId) async {
     final endpoint = '$kCategoriesEndpoint/$menuId/flutter-categories';
     final List<dynamic> categoriesJson = await _get(endpoint);
-    // ✅ Este método deve estar correto.
+
     return categoriesJson.map((json) => Category.fromJson(json)).toList();
   }
 
-  // ⭐️ MÉTODO CORRIGIDO: Adicionando verificação de Map para garantir tipagem
   Future<List<ProductAddOn>> fetchProductAddOns(String productId) async {
     final endpoint = '$kAdditionalsEndpoint/$productId/flutter-additionals';
     final List<dynamic> addOnsJson = await _get(endpoint);
 
     return addOnsJson
-    // Garante que só Maps válidos sejam passados
         .where((json) => json is Map<String, dynamic>)
         .map((json) => ProductAddOn.fromJson(json as Map<String, dynamic>))
         .toList();
+
   }
 
   Future<List<Ticket>> fetchAvailableTickets() async {
@@ -106,17 +106,22 @@ class ApiService {
   }
 
   Future<List<ProductVariable>> fetchProductVariables(String productId) async {
+
     final endpoint = '$kProductVariablesEndpoint/$productId/flutter-product-variables';
     final List<dynamic> optionsJson = await _get(endpoint);
+
     if (optionsJson.isEmpty) {
       return [];
     }
+
     List<ProductOption> options = optionsJson.map((json) => ProductOption.fromJson(json)).toList();
+
     final productVariable = ProductVariable(
       id: 'default-variable-id',
       name: 'Opções',
       options: options,
     );
+
     return [productVariable];
   }
 
@@ -134,9 +139,9 @@ class ApiService {
   }
 
   Future<TicketDetail> fetchTicketDetails(Ticket baseTicket) async {
+
     final uri = Uri.parse('http://10.0.2.2:8080/api/tickets/flutter-tickets/by-ticket/${baseTicket.id}');
 
-    print('DEBUG URL: $uri');
 
     try {
       final response = await _client.get(uri);
@@ -159,7 +164,9 @@ class ApiService {
   }
 
   Future<bool> payTicket(String ticketId) async {
+
     await Future.delayed(const Duration(seconds: 1));
     return true;
+
   }
 }

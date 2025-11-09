@@ -26,7 +26,7 @@ class MenuDetailScreen extends StatelessWidget {
 
     return Column(
       children: [
-        // ⭐️ HEADER MODERNO COM GRADIENTE SUTIL
+
         Container(
           width: double.infinity,
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
@@ -80,7 +80,7 @@ class MenuDetailScreen extends StatelessWidget {
           ),
         ),
 
-        // ⭐️ LISTA DE PRODUTOS
+
         Expanded(
           child: FutureBuilder<List<Product>>(
             future: apiService.fetchProductsByCategory(selectedCategoryId),
@@ -191,7 +191,7 @@ class MenuDetailScreen extends StatelessWidget {
     );
   }
 
-  // ⭐️ CARD DE PRODUTO MODERNIZADO
+
   Widget _buildProductCard(Product product, BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final modernGreen = Colors.green.shade600;
@@ -210,7 +210,7 @@ class MenuDetailScreen extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ⭐️ IMAGEM DO PRODUTO COM DESIGN MODERNO
+
               Hero(
                 tag: 'product-${product.idProduct}',
                 child: Container(
@@ -270,7 +270,7 @@ class MenuDetailScreen extends StatelessWidget {
                             ),
                           ),
                         ),
-                        // ⭐️ OVERLAY SUTIL NA IMAGEM
+
                         Container(
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
@@ -291,13 +291,13 @@ class MenuDetailScreen extends StatelessWidget {
 
               const SizedBox(width: 16),
 
-              // ⭐️ INFORMAÇÕES DO PRODUTO
+
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Nome do produto
+
                     Text(
                       product.name,
                       style: const TextStyle(
@@ -311,7 +311,7 @@ class MenuDetailScreen extends StatelessWidget {
 
                     const SizedBox(height: 6),
 
-                    // Descrição
+
                     Text(
                       product.description,
                       style: TextStyle(
@@ -325,11 +325,11 @@ class MenuDetailScreen extends StatelessWidget {
 
                     const SizedBox(height: 12),
 
-                    // ⭐️ PREÇO E BOTÃO DE ADICIONAR
+
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Preço em destaque
+
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 12,
@@ -349,7 +349,7 @@ class MenuDetailScreen extends StatelessWidget {
                           ),
                         ),
 
-                        // Botão de adicionar modernizado
+
                         Container(
                           decoration: BoxDecoration(
                             color: colorScheme.primary.withOpacity(0.1),

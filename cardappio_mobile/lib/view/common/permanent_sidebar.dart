@@ -9,7 +9,6 @@ class PermanentSidebar extends StatelessWidget {
   final int cartItemCount;
   final Function(int index) onTap;
 
-  // Novos parâmetros de categoria
   final bool isMenuSelected;
   final String selectedCategoryName;
   final Function(String categoryName) onCategoryTap;
@@ -46,7 +45,7 @@ class PermanentSidebar extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Header (mantido por padrão)
+
           Container(
             padding: const EdgeInsets.only(top: 16.0, bottom: 16.0, left: 16.0),
             width: double.infinity,
@@ -61,16 +60,15 @@ class PermanentSidebar extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
                 children: <Widget>[
-                  // 1. ITEM CARDÁPIO (com sub-menu)
-                  // ADICIONANDO A KEY DINÂMICA: Isso força o widget a ser remontado
-                  // (e o AnimatedSize a reiniciar) sempre que a tela mudar ou o menu for selecionado.
+
+
                   Column(
                     key: ValueKey('menu_group_$selectedIndex'),
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildSidebarItem(context, 0, Icons.menu_book, 'Cardápio', selectedIndex, onTap),
 
-                      // 1.2. SUB-MENU DE CATEGORIAS
+
                       SidebarCategoryMenu(
                         isExpanded: isMenuSelected,
                         selectedCategoryName: selectedCategoryName,
@@ -105,7 +103,7 @@ Widget _buildSidebarItem(
     ) {
   final bool isSelected = selectedIndex == index;
 
-  // Cores para item selecionado e não selecionado
+
   final Color itemTextColor = isSelected ? Colors.black87 : Colors.white;
   final Color itemIconColor = isSelected ? Colors.black87 : Colors.white;
   final Color selectedBackgroundColor = isSelected ? Colors.white.withOpacity(0.9) : Colors.transparent;

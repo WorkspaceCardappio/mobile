@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../data/api_service.dart';
 import '../../../model/ticket.dart';
-// Mantendo a importação original para evitar reintroduzir o erro de tipagem
+
 import '../../../model/ticket_item.dart' hide ProductOrder;
 
 class PaymentScreen extends StatefulWidget {
@@ -89,7 +89,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       }
     }
 
-    // Mostra loading
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -113,7 +113,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     final result = await widget.apiService.payTicket(_selectedTicket!.id);
 
     if (!mounted) return;
-    Navigator.pop(context); // Remove loading
+    Navigator.pop(context);
 
     if (result) {
       _showSnackBar('Pagamento realizado com sucesso!', isSuccess: true);
@@ -157,7 +157,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
-  // ⭐️ WIDGET: Leading com número da comanda
   Widget _buildTicketNumberBadge(int number, {double size = 50}) {
     return Container(
       width: size,
@@ -179,14 +178,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
-  // ⭐️ STEP 1: Seleção e Visualização da Comanda
   Widget _buildStep1SelectTicket(List<Ticket> availableTickets) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 8),
 
-        // Dropdown modernizado
         Container(
           decoration: BoxDecoration(
             color: Colors.grey.shade50,
@@ -309,7 +306,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
-  // ⭐️ DETALHES DA COMANDA: Design Moderno e Limpo
   Widget _buildTicketDetailConfirmation(TicketDetail detail) {
     final double grandTotal = detail.calculatedTotal;
     final List<ProductOrder> allProducts =
@@ -332,7 +328,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header com número da comanda
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -359,7 +354,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ),
           ),
 
-          // Lista de produtos
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -380,7 +374,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                // Lista de itens
                 ...allProducts.map((item) {
                   return Container(
                     margin: const EdgeInsets.only(bottom: 8),
@@ -432,7 +425,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ),
           ),
 
-          // Total
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -467,7 +459,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
-  // ⭐️ STEP 2: Opções de Pagamento Modernizadas
   Widget _buildStep2PaymentOptions() {
     if (_ticketDetail == null) {
       return const Center(child: CircularProgressIndicator());
@@ -479,7 +470,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Resumo da comanda
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -520,7 +510,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
         const SizedBox(height: 24),
 
-        // Título da seção
         Row(
           children: [
             Icon(Icons.payment_rounded, color: Colors.grey.shade700),
@@ -536,7 +525,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
         const SizedBox(height: 16),
 
-        // Opção: Pagamento Total
         _buildPaymentOptionCard(
           title: 'Pagamento Total',
           subtitle: 'Pagar o valor completo da comanda',
@@ -547,7 +535,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
         const SizedBox(height: 12),
 
-        // Opção: Pagamento Parcial
+
         _buildPaymentOptionCard(
           title: 'Pagamento Parcial',
           subtitle: 'Pagar apenas uma parte do valor',
@@ -556,7 +544,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           color: Colors.blue.shade600,
         ),
 
-        // Campo de valor parcial
+
         if (_paymentOption == 'partial')
           Container(
             margin: const EdgeInsets.only(top: 16),
@@ -824,7 +812,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 final isLastStep = details.currentStep == 1;
                 final isFirstStep = details.currentStep == 0;
 
-                // 1. Ocultar o botão "Cancelar" no Step 1
+
                 if (isFirstStep) {
                   return Padding(
                     padding: const EdgeInsets.only(top: 24.0),
@@ -857,15 +845,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   );
                 }
 
-                // 2. Trocar a ordem e usar Expanded ElevatedButton para tamanhos similares no Step 2 (Finalizar)
+
                 return Padding(
                   padding: const EdgeInsets.only(top: 24.0),
                   child: Row(
                     children: <Widget>[
-                      // Botão VOLTAR (ElevatedButton na Esquerda, Tamanho similar)
+
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: details.onStepCancel, // Usa o onStepCancel para Voltar
+                          onPressed: details.onStepCancel,
                           icon: const Icon(Icons.arrow_back),
                           label: Text(
                             isLastStep ? 'Voltar' : 'Cancelar',
@@ -888,7 +876,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
                       const SizedBox(width: 12),
 
-                      // Botão CONTINUAR/FINALIZAR (ElevatedButton na Direita, Tamanho similar)
+
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: details.onStepContinue,

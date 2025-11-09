@@ -12,8 +12,8 @@ class Product {
   final String description;
   final double price;
   final String? categoryName;
-  final String? note; // Campo opcional para notas
-  final String image;  // Campo para URL da imagem
+  final String? note;
+  final String image;
 
   Product({
     required this.idProductItem,
@@ -33,11 +33,9 @@ class Product {
       name: json['name'] as String,
       price: (json['price'] as num).toDouble(),
 
-      // Tratamento seguro para campos String não-nulos
       description: json['description'] as String? ?? '',
       image: json['image'] as String? ?? '',
 
-      // Campos opcionais (String?)
       categoryName: json['categoryName'] as String?,
       note: json['note'] as String?,
     );

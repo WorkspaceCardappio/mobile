@@ -2,31 +2,34 @@ import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart' as caro;
 import '../../../data/api_service.dart';
 import '../../../model/menu.dart';
-import 'package:cached_network_image/cached_network_image.dart'; // Import necessário para URLs
+import 'package:cached_network_image/cached_network_image.dart';
+
 
 class MenuItem {
   final String name;
-  final String imageUrl; // URL ou Caminho do Asset
+  final String imageUrl;
   final String price;
 
   MenuItem({required this.name, required this.imageUrl, required this.price});
 }
 
-// ATUALIZE ESTAS LISTAS COM AS IMAGENS REAIS DO SEU PROJETO!
+
 final List<MenuItem> promoItemsList = [
-  // ESTE USA URL (Image.network)
+
   MenuItem(name: 'Prato Feito Executivo', imageUrl: 'https://blog-parceiros.ifood.com.br/wp-content/uploads/2022/08/prato-executivo.jpg', price: 'R\$ 38,90'),
-  // ESTES USAM ASSETS (Image.asset)
   MenuItem(name: 'Bife Grelhado', imageUrl: 'https://static.vecteezy.com/ti/fotos-gratis/p2/3723619-grelhado-fatiado-cap-alcatra-bife-com-dois-copos-de-cerveja-na-madeira-tabua-de-marmore-carne-bife-picanha-brasileira-foto.jpg', price: 'R\$ 54,99'),
   MenuItem(name: 'Camarão Crocante', imageUrl: 'https://www.comidaereceitas.com.br/img/sizeswp/1200x675/2020/02/camarao_frito.jpg', price: 'R\$ 68,50'),
   MenuItem(name: 'Macarrão Frutos do Mar', imageUrl: 'https://www.buaizalimentos.com.br/uploads/receitas/Foto_agenda_2021___massa_frutos_do_mar_74079755_XL__002.jpg', price: 'R\$ 59,90'),
+
 ];
 
 final List<MenuItem> houseRecommendations = [
+
   MenuItem(name: 'Carne Grelhada c/ Batata', imageUrl: 'https://i.panelinha.com.br/i1/bk-2979-carne-de-panela-com-cenoura-e-batata-na-pressao.webp', price: 'R\$ 47,99'),
   MenuItem(name: 'Salmão Grelhado', imageUrl: 'https://www.comidaereceitas.com.br/wp-content/uploads/2020/03/Salmao-assado-no-forno-freepik-780x520.jpg', price: 'R\$ 75,00'),
   MenuItem(name: 'Tiramisù Italiano', imageUrl: 'https://cdn.casaeculinaria.com/wp-content/uploads/2023/03/15114930/Tiramisu.jpg', price: 'R\$ 22,50'),
   MenuItem(name: 'Sopa Cremosa', imageUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRlR9ibYhTdIfgWGiiQNUpkS5uO1Ya1XlaK9g&s', price: 'R\$ 35,00'),
+
 ];
 
 class HomeScreen extends StatefulWidget {
@@ -88,13 +91,13 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // --- WIDGET AUXILIAR: CARREGADOR CONDICIONAL DE IMAGEM ---
+
   Widget _buildConditionalImage(String imageUrl) {
-    // 1. LÓGICA DE CARREGAMENTO CONDICIONAL
+
     final bool isNetworkImage = imageUrl.startsWith('http');
 
     if (isNetworkImage) {
-      // Se for URL, use CachedNetworkImage (melhor performance)
+
       return CachedNetworkImage(
         imageUrl: imageUrl,
         width: double.infinity,
@@ -111,7 +114,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
     } else {
-      // Se for Asset, use Image.asset
+
       return Image.asset(
         imageUrl,
         width: double.infinity,
@@ -127,13 +130,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
 
-  // --- WIDGET 1: CARROSSEL PROMO (DESIGN DE DESTAQUE) ---
+
   Widget _buildPromotionalCarouselItem(BuildContext context, MenuItem item, int index) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
     return Container(
-      // Margens e bordas zeradas para Full-Width
+
       margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
       decoration: BoxDecoration(
         color: colorScheme.surface,
@@ -150,10 +153,10 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(0),
         child: Stack(
           children: [
-            // UTILIZAÇÃO DO NOVO WIDGET CONDICIONAL
+
             _buildConditionalImage(item.imageUrl),
 
-            // Gradiente Escuro (Overlay para Texto)
+
             Positioned.fill(
               child: Container(
                 decoration: BoxDecoration(
@@ -171,7 +174,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // Detalhes do Item (Texto e Botão)
+
             Positioned(
               bottom: 16,
               left: 16,
@@ -231,7 +234,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // --- WIDGET 2: CARD DE RECOMENDAÇÃO (LISTA HORIZONTAL) ---
+
   Widget _buildRecommendationCard(BuildContext context, MenuItem item, Function onTap, double itemWidth) {
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -256,17 +259,17 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Imagem
+
               Expanded(
                 flex: 3,
                 child: ClipRRect(
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                  // UTILIZAÇÃO DO NOVO WIDGET CONDICIONAL
+
                   child: _buildConditionalImage(item.imageUrl),
                 ),
               ),
 
-              // Detalhes do Produto
+
               Expanded(
                 flex: 2,
                 child: Padding(
@@ -313,7 +316,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // --- WIDGET 3: INDICADORES DE PÁGINA (Pílulas) ---
+
   List<Widget> _buildPageIndicators() {
     final colorScheme = Theme.of(context).colorScheme;
     return List<Widget>.generate(promoItemsList.length, (index) {
@@ -337,11 +340,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    // ⭐️ REVERTENDO CORREÇÃO ANTERIOR: Remove o Padding de 8.0
+
     return Column(
       children: [
 
-        // --- SEÇÃO 1: CARROSSEL PROMO (Altura Responsiva) ---
+
         SizedBox(
           height: screenHeight * 0.55,
           child: Column(
@@ -352,11 +355,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   itemCount: promoItemsList.length,
                   options: caro.CarouselOptions(
                     height: double.infinity,
-                    // 100% da largura do viewport
                     viewportFraction: 1.0,
                     initialPage: 0,
                     enableInfiniteScroll: true,
-                    // Remove o enlargeCenterPage para Full-Width
                     enlargeCenterPage: false,
                     autoPlay: true,
                     autoPlayInterval: const Duration(seconds: 4),
@@ -374,11 +375,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
 
-              // ⭐️ CORREÇÃO: Envolver o Padding do contador em um Container opaco e preto
-              // Isso garante que ele cubra a sombra do menu lateral, mesmo sem Padding externo.
+
               Container(
-                color: colorScheme.background, // Fundo opaco para cobrir a sombra
-                width: double.infinity, // Ocupa toda a largura
+                color: colorScheme.background,
+                width: double.infinity,
                 child: Padding(
                   padding: const EdgeInsets.only(top: 10.0, bottom: 20.0),
                   child: Row(
@@ -391,10 +391,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
 
-        // --- SEÇÃO 2: RECOMENDAÇÕES DA CASA ---
+
         Expanded(
           child: Container(
-            // A cor de fundo opaca (colorScheme.background) da Home já deve cobrir a sombra
+
             color: colorScheme.background,
             padding: const EdgeInsets.only(bottom: 20.0),
             child: Column(
@@ -402,29 +402,27 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 20.0),
-                  child: Row( // ⭐️ Novo Row para o Ícone e Título
+                  child: Row(
                     children: [
-                      // ⭐️ Ícone de Destaque
                       Icon(
-                        Icons.flash_on_rounded, // Ícone de promoção/velocidade
-                        color: colorScheme.primary, // Cor principal para forte destaque
+                        Icons.flash_on_rounded,
+                        color: colorScheme.primary,
                         size: 30,
                       ),
                       const SizedBox(width: 8),
-                      // ⭐️ Título Profissional de Promoção
+
                       Text(
-                        'OFERTAS ESPECIAIS', // Texto em caixa alta para ênfase
+                        'OFERTAS ESPECIAIS',
                         style: theme.textTheme.headlineSmall!.copyWith(
-                          fontWeight: FontWeight.w900, // Extremo negrito
-                          color: colorScheme.primary, // Cor do texto igual à cor principal
-                          letterSpacing: 0.8, // Espaçamento entre letras (profissional)
+                          fontWeight: FontWeight.w900,
+                          color: colorScheme.primary,
+                          letterSpacing: 0.8,
                         ),
                       ),
                     ],
                   ),
                 ),
 
-                // Lista Horizontal
                 Expanded(
                   child: LayoutBuilder(
                       builder: (context, constraints) {

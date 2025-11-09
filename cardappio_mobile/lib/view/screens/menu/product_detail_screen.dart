@@ -190,10 +190,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
           return Column(
             children: [
-              // ⭐️ HEADER COM IMAGEM DO PRODUTO
+
               _buildProductHeader(),
 
-              // ⭐️ STEPPER MODERNIZADO
+
               Expanded(
                 child: Theme(
                   data: Theme.of(context).copyWith(
@@ -209,13 +209,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     onStepCancel: _onStepCancel,
                     steps: _buildSteps(),
 
-                    // 🎯 CONTROLS BUILDER CORRIGIDO
+
                     controlsBuilder: (context, details) {
                       final steps = _buildSteps();
                       final isLastStep = details.currentStep == steps.length - 1;
                       final isFirstStep = details.currentStep == 0;
 
-                      // Conteúdo principal do botão Continuar/Finalizar
+
                       Widget continueButton = Expanded(
                         child: ElevatedButton.icon(
                           onPressed: details.onStepContinue,
@@ -243,7 +243,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         ),
                       );
 
-                      // Se for o Step 1, retorna apenas o botão Continuar
+
                       if (isFirstStep) {
                         return Padding(
                           padding: const EdgeInsets.only(top: 24.0),
@@ -253,7 +253,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         );
                       }
 
-                      // Para Steps intermediários e o último Step, retorna Voltar e Continuar/Finalizar
+
                       Widget backButton = Expanded(
                         child: ElevatedButton.icon(
                           onPressed: details.onStepCancel,
@@ -281,9 +281,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         padding: const EdgeInsets.only(top: 24.0),
                         child: Row(
                           children: <Widget>[
-                            backButton, // Botão Voltar (Esquerda)
+                            backButton,
                             const SizedBox(width: 12),
-                            continueButton, // Botão Continuar/Finalizar (Direita)
+                            continueButton,
                           ],
                         ),
                       );
@@ -298,7 +298,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  // ⭐️ HEADER COM IMAGEM E INFO BÁSICA
+
   Widget _buildProductHeader() {
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -316,7 +316,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       ),
       child: Column(
         children: [
-          // Imagem do produto
+
           Hero(
             tag: 'product-${widget.product.idProduct}',
             child: Container(
@@ -364,7 +364,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             ),
           ),
 
-          // Info básica
+
           Container(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -419,7 +419,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  // ⭐️ STEP 1: OPÇÕES (VARIÁVEIS)
+
   Widget _buildStep1Content() {
     if (_productVariables.isEmpty) return const SizedBox.shrink();
 
@@ -526,7 +526,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  // ⭐️ STEP 2: ADICIONAIS
+
   Widget _buildStep2Content() {
     if (_productAddOns.isEmpty) return const SizedBox.shrink();
 
@@ -674,14 +674,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  // ⭐️ STEP 3: FINALIZAR
+
   Widget _buildStep3Content() {
     final modernGreen = Colors.green.shade600;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Quantidade
+
         Row(
           children: [
             Container(
@@ -759,7 +759,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
         const SizedBox(height: 24),
 
-        // Observações
+
         Row(
           children: [
             Container(
@@ -823,7 +823,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
         const SizedBox(height: 24),
 
-        // Total
+
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(

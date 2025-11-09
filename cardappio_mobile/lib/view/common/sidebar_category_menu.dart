@@ -58,13 +58,13 @@ class SidebarCategoryMenu extends StatelessWidget {
     );
   }
 
-  // Widget auxiliar para encapsular a lógica de carregamento de imagem de fundo
+
   Widget _buildBackgroundImageView(String imageUrl, ColorScheme colorScheme) {
     return CachedNetworkImage(
       imageUrl: imageUrl,
       fit: BoxFit.cover,
 
-      // Placeholder (Enquanto carrega)
+
       placeholder: (context, url) => Center(
         child: CircularProgressIndicator(
           color: Colors.white70,
@@ -72,10 +72,10 @@ class SidebarCategoryMenu extends StatelessWidget {
         ),
       ),
 
-      // Widget de Erro (Se falhar ao carregar)
+
       errorWidget: (context, url, error) {
 
-        // Retorna um fundo escuro simples com um ícone de erro discreto
+
         return Container(
           color: Colors.grey.shade900,
           child: Center(
@@ -90,7 +90,7 @@ class SidebarCategoryMenu extends StatelessWidget {
     );
   }
 
-  // Refatorado para usar Stack em vez de ListTile para o visual de "tira completa"
+
   Widget _buildCategoryItem(BuildContext context, Category category) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
@@ -102,10 +102,10 @@ class SidebarCategoryMenu extends StatelessWidget {
         onTap: () => onCategoryTap(category.name),
         borderRadius: BorderRadius.circular(12.0),
         child: Container(
-          height: 80, // Altura fixa para a tira da categoria
+          height: 80,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12.0),
-            // Adiciona uma borda destacada quando selecionado
+
             border: isSelected
                 ? Border.all(color: colorScheme.primary, width: 3.0)
                 : null,
@@ -120,18 +120,18 @@ class SidebarCategoryMenu extends StatelessWidget {
                 : null,
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(10.0), // Bordas internas
+            borderRadius: BorderRadius.circular(10.0),
             child: Stack(
               fit: StackFit.expand,
               children: [
-                // 1. IMAGEM DE FUNDO
+
                 _buildBackgroundImageView(category.image, colorScheme),
 
-                // 2. GRADIENTE DE ESCURECIMENTO (Overlay)
+
                 Container(
                   decoration: const BoxDecoration(
                     gradient: LinearGradient(
-                      // Escurecimento suave em toda a imagem
+
                       colors: [Colors.black54, Colors.black38],
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
@@ -139,17 +139,17 @@ class SidebarCategoryMenu extends StatelessWidget {
                   ),
                 ),
 
-                // 3. TEXTO (Elemento Superior)
+
                 Center(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     child: Text(
                       category.name,
                       style: TextStyle(
-                        color: Colors.white, // Texto Branco
-                        fontWeight: FontWeight.w800, // Forte
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
                         fontSize: 18,
-                        // Adiciona um leve contorno para garantir legibilidade
+
                         shadows: [
                           Shadow(
                             color: Colors.black.withOpacity(0.7),

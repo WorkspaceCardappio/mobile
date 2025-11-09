@@ -66,7 +66,7 @@ class _TicketScreenState extends State<TicketScreen> {
       width: 50,
       height: 50,
       decoration: BoxDecoration(
-        color: primaryColor.withOpacity(0.1), // Fundo suave
+        color: primaryColor.withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Center(
@@ -83,7 +83,6 @@ class _TicketScreenState extends State<TicketScreen> {
   }
 
 
-  // ⭐️ WIDGET: Cabeçalho da Tela (Novo padrão)
   Widget _buildScreenHeader(BuildContext context, Color accentColor) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -111,13 +110,12 @@ class _TicketScreenState extends State<TicketScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ⭐️ COR SECUNDÁRIA MODERNA: Verde claro sóbrio
-    final Color modernGreen = Colors.green.shade700; // Ajustei para shade700 para manter a consistência do outro código
+    final Color modernGreen = Colors.green.shade700;
     final Color accentColor = Theme.of(context).colorScheme.secondary;
 
     return Column(
       children: [
-        _buildScreenHeader(context, accentColor), // Usando o novo widget de cabeçalho
+        _buildScreenHeader(context, accentColor),
         const Divider(height: 0),
         Expanded(
           child: FutureBuilder<List<Ticket>>(
@@ -146,16 +144,14 @@ class _TicketScreenState extends State<TicketScreen> {
                   final formattedDate = dateFormat.format(ticket.createdAt);
 
                   return Card(
-                    margin: const EdgeInsets.only(bottom: 15), // Aumento na margem para separação
-                    elevation: 1, // Sombra sutil
+                    margin: const EdgeInsets.only(bottom: 15),
+                    elevation: 1,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16), // Aumento no padding
+                      contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
 
-                      // ⭐️ LEADING: Ícone de número customizado
                       leading: _buildTicketLeading(context, ticket.number),
 
-                      // ⭐️ TÍTULO PROFISSIONAL E LIMPO (Número da Comanda)
                       title: Padding(
                         padding: const EdgeInsets.only(bottom: 4.0),
                         child: Text(
@@ -170,17 +166,7 @@ class _TicketScreenState extends State<TicketScreen> {
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // ⭐️ DESTAQUE DO TOTAL (Verde Moderno, Tamanho maior)
-                          // Text(
-                          //   'Total: R\$ ${ticket.total.toStringAsFixed(2)}',
-                          //   style: TextStyle(
-                          //     fontWeight: FontWeight.w800,
-                          //     fontSize: 16,
-                          //     color: modernGreen,
-                          //   ),
-                          // ),
-                          const SizedBox(height: 6), // Espaçamento
-                          // DATA FORMATADA
+                          const SizedBox(height: 6),
                           Row(
                             children: [
                               Icon(Icons.access_time, size: 14, color: Colors.grey.shade500),
@@ -197,11 +183,10 @@ class _TicketScreenState extends State<TicketScreen> {
                         ],
                       ),
 
-                      // ⭐️ TRAILING: Ícone de navegação
                       trailing: Icon(
                         Icons.arrow_forward_ios_rounded,
                         size: 20,
-                        color: Colors.grey.shade400, // Cor mais neutra para sobriedade
+                        color: Colors.grey.shade400,
                       ),
                       onTap: () => _openTicketDetails(ticket),
                     ),
@@ -215,7 +200,6 @@ class _TicketScreenState extends State<TicketScreen> {
     );
   }
 
-  // Métodos de estado de erro e vazio (mantidos)
 
   Widget _buildErrorState(BuildContext context, Object error) {
     return Center(

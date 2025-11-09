@@ -3,7 +3,6 @@ import 'package:intl/intl.dart';
 import '../../../data/api_service.dart';
 import '../../../model/ticket.dart';
 import '../../common/split_ticket_dialog.dart';
-// Note: Assumimos que ProductOrder está definido e é acessível
 import '../../../model/ticket_item.dart' hide ProductOrder;
 
 class TicketDetailScreen extends StatelessWidget {
@@ -18,9 +17,7 @@ class TicketDetailScreen extends StatelessWidget {
     required this.onNavigateToPayment,
   });
 
-  // Cor de destaque verde para totais
   static final Color modernGreen = Colors.green.shade600;
-  // Cor de destaque para ação de divisão
   static final Color splitColor = Colors.orange.shade600;
 
   void _handleSplitTicket(BuildContext context, TicketDetail detail) async {
@@ -42,9 +39,8 @@ class TicketDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Fundo neutro
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        // Título alinhado à esquerda e cor neutra, sem sombra
         title: Text(
           'Comanda ${ticket.number}',
           style: TextStyle(
@@ -97,7 +93,6 @@ class TicketDetailScreen extends StatelessWidget {
     );
   }
 
-  // ⭐️ HEADER: Mais clean, foco no Total
   Widget _buildHeader(
       BuildContext context,
       TicketDetail detail,
@@ -105,7 +100,6 @@ class TicketDetailScreen extends StatelessWidget {
       ) {
     return Container(
       width: double.infinity,
-      // Padding lateral ajustado e vertical para dar respiro
       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 15.0),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
@@ -116,7 +110,6 @@ class TicketDetailScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Subtítulo e data
           Text(
             'Comanda Aberta em: $formattedDate',
             style: TextStyle(
@@ -126,7 +119,6 @@ class TicketDetailScreen extends StatelessWidget {
           ),
           const SizedBox(height: 15),
 
-          // Total Geral em destaque
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -142,7 +134,7 @@ class TicketDetailScreen extends StatelessWidget {
                 style: Theme.of(context).textTheme.headlineMedium!.copyWith(
                   color: modernGreen,
                   fontWeight: FontWeight.w900,
-                  fontSize: 32, // Tamanho reduzido para ser mais sóbrio
+                  fontSize: 32,
                 ),
               ),
             ],
@@ -152,13 +144,12 @@ class TicketDetailScreen extends StatelessWidget {
     );
   }
 
-  // ⭐️ HEADER DA LISTA: Mais escuro e informativo
   Widget _buildItemsHeader(BuildContext context, TicketDetail detail) {
     final totalItemCount = detail.orders.expand((order) => order.items).length;
 
     return Container(
       width: double.infinity,
-      color: Colors.grey.shade100, // Fundo levemente cinza
+      color: Colors.grey.shade100,
       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
       child: Text(
         'ITENS PEDIDOS ($totalItemCount)',
@@ -172,14 +163,13 @@ class TicketDetailScreen extends StatelessWidget {
     );
   }
 
-  // ⭐️ LISTA DE ITENS: Mais detalhada e separada
   Widget _buildItemsList(BuildContext context, TicketDetail detail) {
     final List<ProductOrder> allProducts =
     detail.orders.expand((order) => order.items).toList().cast<ProductOrder>();
 
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
-      child: ListView.separated( // Usando Separated para linha divisória
+      child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 0),
         itemCount: allProducts.length,
         itemBuilder: (context, index) {
@@ -190,7 +180,6 @@ class TicketDetailScreen extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Quantidade/Ícone (Cor primária suave)
                 Container(
                   width: 32,
                   height: 32,
@@ -211,7 +200,6 @@ class TicketDetailScreen extends StatelessWidget {
                   ),
                 ),
 
-                // Nome e Preço Unitário
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -229,7 +217,6 @@ class TicketDetailScreen extends StatelessWidget {
                   ),
                 ),
 
-                // Subtotal
                 Text(
                   'R\$ ${item.total.toStringAsFixed(2)}',
                   style: TextStyle(
@@ -247,7 +234,6 @@ class TicketDetailScreen extends StatelessWidget {
     );
   }
 
-  // ⭐️ BOTÕES DE AÇÃO: Pinned na parte inferior
   Widget _buildActionButtons(BuildContext context, TicketDetail detail) {
     return Container(
       padding: const EdgeInsets.all(16.0),
