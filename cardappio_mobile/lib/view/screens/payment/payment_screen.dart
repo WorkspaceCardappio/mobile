@@ -429,14 +429,6 @@ Widget _buildStep4PixDisplay() {
                                 fontSize: 15,
                               ),
                             ),
-                            Text(
-                              'R\$ ${ticket.total.toStringAsFixed(2)}',
-                              style: TextStyle(
-                                color: Colors.green.shade600,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14,
-                              ),
-                            ),
                           ],
                         ),
                       ),
