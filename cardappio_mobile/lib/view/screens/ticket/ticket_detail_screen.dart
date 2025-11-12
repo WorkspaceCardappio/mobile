@@ -175,6 +175,10 @@ class TicketDetailScreen extends StatelessWidget {
         itemBuilder: (context, index) {
           final item = allProducts[index];
 
+          final double unitPrice = item.price;
+          final double calculatedTotal = unitPrice * item.quantity;
+
+
           return Container(
             padding: const EdgeInsets.symmetric(vertical: 10),
             child: Row(
@@ -210,15 +214,16 @@ class TicketDetailScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'R\$ ${item.price.toStringAsFixed(2)} / un.',
+                        'R\$ ${unitPrice.toStringAsFixed(2)} / un.',
                         style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
                       ),
                     ],
                   ),
                 ),
 
+
                 Text(
-                  'R\$ ${item.total.toStringAsFixed(2)}',
+                  'R\$ ${calculatedTotal.toStringAsFixed(2)}',
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 16,
