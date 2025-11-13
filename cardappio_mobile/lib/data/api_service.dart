@@ -18,6 +18,7 @@ class ApiService {
   final http.Client _client;
 
   static const String kPixPaymentEndpoint = 'http://10.0.2.2:8080/api/payments/pix';
+  static const String kPixSimulateEndpoint = 'http://10.0.2.2:8080/api/payments/pix/simulate';
 
   ApiService({http.Client? client}) : _client = client ?? http.Client();
 
@@ -203,6 +204,29 @@ class ApiService {
         print('Erro de conexão ao criar Pix: $e');
       }
       throw Exception('Erro de rede ao criar Pix: ${e.toString()}');
+    }
+  }
+
+  Future<void> simulatePixPayment(String pixId) async {
+    final endpoint = '$kPixSimulateEndpoint/$pixId';
+    final url = Uri.parse(endpoint);
+
+    try {
+      final response = await _client.post(url);
+
+      if (response.statusCode != 200) {
+        if (kDebugMode) {
+          print('Falha ao simular Pix: Status ${response.statusCode}');
+          print('Body de resposta: ${response.body}');
+        }
+        throw Exception('Falha ao simular Pix: Status ${response.statusCode}');
+      }
+
+    } catch (e) {
+      if (kDebugMode) {
+        print('Erro de conexão ao simular Pix: $e');
+      }
+      throw Exception('Erro de rede ao simular Pix: ${e.toString()}');
     }
   }
 }

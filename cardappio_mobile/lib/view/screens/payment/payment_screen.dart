@@ -1,3 +1,4 @@
+import 'package:cardappio_mobile/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../data/api_service.dart';
@@ -147,6 +148,40 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
   }
 
+  void _handleSimulatePayment() async {
+    if (_pixResponse == null) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      await widget.apiService.simulatePixPayment(_pixResponse!.pixId);
+
+      if (!mounted) return;
+      Navigator.pop(context);
+
+      _showSnackBar('Simulação de pagamento APROVADA! O Webhook atualizou a Comanda.', isSuccess: true);
+
+      Future.delayed(const Duration(seconds: 1), () {
+        if (mounted) {
+          Navigator.of(context).pushNamedAndRemoveUntil(
+              OrderApp.mainNavigatorRoute,
+                  (Route<dynamic> route) => false,
+          arguments: 2);
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      _showSnackBar('Falha na Simulação: ${e.toString().split(':').last.trim()}', isError: true);
+    }
+  }
+
   void _showSnackBar(String message, {bool isError = false, bool isSuccess = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -268,112 +303,133 @@ Widget _buildCustomerData() {
   );
 }
 
-Widget _buildStep4PixDisplay() {
-  if (_pixResponse == null) {
-    return const Center(child: Text('Gere o Pix para visualizá-lo.'));
-  }
+  Widget _buildStep4PixDisplay() {
+    if (_pixResponse == null) {
+      return const Center(child: Text('Gere o Pix para visualizá-lo.'));
+    }
 
-  String rawBase64 = _pixResponse!.brCodeBase64;
-  if (rawBase64.startsWith('data:image/png;base64,')) {
-    rawBase64 = rawBase64.substring('data:image/png;base64,'.length);
-  }
+    String rawBase64 = _pixResponse!.brCodeBase64;
+    if (rawBase64.startsWith('data:image/png;base64,')) {
+      rawBase64 = rawBase64.substring('data:image/png;base64,'.length);
+    }
 
-  final qrCodeBytes = base64Decode(rawBase64);
-  final String pixCode = _pixResponse!.brCode;
+    final qrCodeBytes = base64Decode(rawBase64);
+    final String pixCode = _pixResponse!.brCode;
 
-  return Center(
-    child: SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Text(
-            'Pague sua comanda via Pix',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Use seu aplicativo bancário para escanear:',
-            style: TextStyle(color: Colors.grey),
-          ),
-          const SizedBox(height: 24),
-
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300, width: 2),
-              borderRadius: BorderRadius.circular(10),
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              'Pague sua comanda via Pix',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            child: Image.memory(
-              qrCodeBytes,
-              width: 200,
-              height: 200,
-              errorBuilder: (context, error, stackTrace) {
-                return QrImageView(
-                  data: pixCode,
-                  version: QrVersions.auto,
-                  size: 200.0,
-                );
-              },
+            const SizedBox(height: 8),
+            const Text(
+              'Use seu aplicativo bancário para escanear:',
+              style: TextStyle(color: Colors.grey),
             ),
-          ),
-          const SizedBox(height: 32),
+            const SizedBox(height: 24),
 
-          const Text(
-            'Ou copie a chave Pix (Copia e Cola):',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          InkWell(
-            onTap: () {
-              Clipboard.setData(ClipboardData(text: pixCode));
-              _showSnackBar('Código Pix Copia e Cola copiado!', isSuccess: true);
-            },
-            child: Container(
+            Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade300, width: 2),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Expanded(
-                    child: Text(
-                      pixCode,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.blue.shade800,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.copy, size: 18, color: Colors.blue),
-                ],
+              child: Image.memory(
+                qrCodeBytes,
+                width: 200,
+                height: 200,
+                errorBuilder: (context, error, stackTrace) {
+                  return QrImageView(
+                    data: pixCode,
+                    version: QrVersions.auto,
+                    size: 200.0,
+                  );
+                },
               ),
             ),
-          ),
-          
-          const SizedBox(height: 24),
-          
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.watch_later_outlined, size: 20, color: Colors.orange),
-              SizedBox(width: 8),
-              Text(
-                'Aguardando a confirmação do pagamento...',
-                style: TextStyle(fontStyle: FontStyle.italic, color: Colors.orange),
+            const SizedBox(height: 32),
+
+            const Text(
+              'Ou copie a chave Pix (Copia e Cola):',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            InkWell(
+              onTap: () {
+                Clipboard.setData(ClipboardData(text: pixCode));
+                _showSnackBar('Código Pix Copia e Cola copiado!', isSuccess: true);
+              },
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        pixCode,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.blue.shade800,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.copy, size: 18, color: Colors.blue),
+                  ],
+                ),
               ),
-            ],
-          ),
-          const SizedBox(height: 40),
-        ],
+            ),
+
+            const SizedBox(height: 24),
+
+            ElevatedButton.icon(
+              onPressed: _handleSimulatePayment,
+              icon: const Icon(Icons.bug_report, size: 24),
+              label: const Text(
+                'SIMULAR PAGAMENTO',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange.shade700,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                elevation: 4,
+              ),
+            ),
+
+            const SizedBox(height: 32),
+
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.watch_later_outlined, size: 20, color: Colors.orange),
+                SizedBox(width: 8),
+                Text(
+                  'Aguardando a confirmação do pagamento...',
+                  style: TextStyle(fontStyle: FontStyle.italic, color: Colors.orange),
+                ),
+              ],
+            ),
+            const SizedBox(height: 40),
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildTicketNumberBadge(int number, {double size = 50}) {
     return Container(
