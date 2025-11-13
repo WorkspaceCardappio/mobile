@@ -273,7 +273,12 @@ Widget _buildStep4PixDisplay() {
     return const Center(child: Text('Gere o Pix para visualizá-lo.'));
   }
 
-  final qrCodeBytes = base64Decode(_pixResponse!.brCodeBase64);
+  String rawBase64 = _pixResponse!.brCodeBase64;
+  if (rawBase64.startsWith('data:image/png;base64,')) {
+    rawBase64 = rawBase64.substring('data:image/png;base64,'.length);
+  }
+
+  final qrCodeBytes = base64Decode(rawBase64);
   final String pixCode = _pixResponse!.brCode;
 
   return Center(
@@ -283,7 +288,7 @@ Widget _buildStep4PixDisplay() {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Text(
-            'Comanda paga via Pix',
+            'Pague sua comanda via Pix',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
