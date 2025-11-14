@@ -1,8 +1,14 @@
+import 'package:cardappio_mobile/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../data/api_service.dart';
 import '../../../model/ticket.dart';
+import 'dart:convert';
+import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../../model/abacate_pix_responseDTO.dart';
+import '../../../model/pix_form_data.dart'; 
+import '../../../model/pix_payment_request_dto.dart';
 import '../../../model/ticket_item.dart' hide ProductOrder;
 
 class PaymentScreen extends StatefulWidget {
@@ -27,6 +33,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
   int _currentStep = 0;
   String _paymentOption = 'total';
   final TextEditingController _partialController = TextEditingController();
+
+  final PixFormData _pixFormData = PixFormData(
+    customerName: '', customerEmail: '', customerTaxId: '', customerCellphone: '',
+  );
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  AbacatePixResponseDTO? _pixResponse;
 
   @override
   void initState() {
@@ -72,66 +84,101 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   void _handlePaymentProcessing() async {
     final double grandTotal = _ticketDetail?.calculatedTotal ?? 0.0;
+  
+  double amountToPay = (_paymentOption == 'total') 
+      ? grandTotal 
+      : double.tryParse(_partialController.text.replaceAll(',', '.')) ?? 0.0;
+  
+  if (_selectedTicket == null || amountToPay <= 0) {
+    _showSnackBar('Selecione uma comanda e/ou valor válido.', isError: true);
+    return;
+  }
+  
+  if (!_formKey.currentState!.validate()) {
+    _showSnackBar('Preencha todos os dados do pagador corretamente.', isError: true);
+    return;
+  }
+  
+  final pixRequest = PixPaymentRequestDTO(
+    ticketId: _selectedTicket!.id.toString(), 
+    description: 'Comanda #${_selectedTicket!.number}',
+    amount: amountToPay,
+    customerData: _pixFormData, 
+  );
 
-    if (_selectedTicket == null || _ticketDetail == null || grandTotal == 0.0) {
-      _showSnackBar('Comanda não selecionada ou detalhes não carregados.', isError: true);
-      return;
-    }
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => const Center(
+      child: Card(
+        child: Padding(
+          padding: EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Gerando Pix...'),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 
-    double amountToPay = 0.0;
-    if (_paymentOption == 'total') {
-      amountToPay = grandTotal;
+  try {
+    final response = await widget.apiService.createPixPayment(pixRequest);
+
+    if (!mounted) return;
+    Navigator.pop(context); 
+
+    if (response != null && response.status == 'PENDING') {
+      setState(() {
+        _pixResponse = response;
+        _currentStep = 3; 
+      });
+      _showSnackBar('Pix gerado com sucesso! Aguardando pagamento.', isSuccess: true);
     } else {
-      amountToPay = double.tryParse(_partialController.text.replaceAll(',', '.')) ?? 0.0;
-      if (amountToPay <= 0 || amountToPay > grandTotal) {
-        _showSnackBar('Valor parcial inválido.', isError: true);
-        return;
-      }
+      _showSnackBar('Falha ao gerar Pix. Verifique a resposta da API.', isError: true);
     }
+  } catch (e) {
+    if (!mounted) return;
+    Navigator.pop(context); 
+    _showSnackBar('Erro de comunicação: ${e.toString().split(':').last.trim()}', isError: true);
+  }
+  }
 
+  void _handleSimulatePayment() async {
+    if (_pixResponse == null) return;
 
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => const Center(
-        child: Card(
-          child: Padding(
-            padding: EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('Processando pagamento...'),
-              ],
-            ),
-          ),
-        ),
+        child: CircularProgressIndicator(),
       ),
     );
 
-    final result = await widget.apiService.payTicket(_selectedTicket!.id);
+    try {
+      await widget.apiService.simulatePixPayment(_pixResponse!.pixId);
 
-    if (!mounted) return;
-    Navigator.pop(context);
+      if (!mounted) return;
+      Navigator.pop(context);
 
-    if (result) {
-      _showSnackBar('Pagamento realizado com sucesso!', isSuccess: true);
+      _showSnackBar('Simulação de pagamento APROVADA! O Webhook atualizou a Comanda.', isSuccess: true);
 
-      if (_paymentOption == 'total') {
-        setState(() {
-          _selectedTicket = null;
-          _ticketDetail = null;
-          _currentStep = 0;
-        });
-      }
-
-      if (widget.preSelectedTicket != null && Navigator.canPop(context)) {
-        await Future.delayed(const Duration(milliseconds: 800));
-        if (mounted) Navigator.pop(context, true);
-      }
-    } else {
-      _showSnackBar('Falha na transação. Tente novamente.', isError: true);
+      Future.delayed(const Duration(seconds: 1), () {
+        if (mounted) {
+          Navigator.of(context).pushNamedAndRemoveUntil(
+              OrderApp.mainNavigatorRoute,
+                  (Route<dynamic> route) => false,
+          arguments: 2);
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      _showSnackBar('Falha na Simulação: ${e.toString().split(':').last.trim()}', isError: true);
     }
   }
 
@@ -153,6 +200,233 @@ class _PaymentScreenState extends State<PaymentScreen> {
             : (isError ? Colors.red.shade600 : Colors.blue.shade600),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  Widget _buildTextFormField({
+  required String label,
+  required String initialValue,
+  required ValueChanged<String> onChanged,
+  required FormFieldValidator<String> validator,
+  TextInputType keyboardType = TextInputType.text,
+  List<TextInputFormatter>? inputFormatters,
+}) {
+  return TextFormField(
+    initialValue: initialValue,
+    onChanged: onChanged,
+    validator: validator,
+    keyboardType: keyboardType,
+    inputFormatters: inputFormatters,
+    decoration: InputDecoration(
+      labelText: label,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+    ),
+  );
+}
+
+Widget _buildCustomerData() {
+  return Form(
+    key: _formKey, 
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Dados do Pagador (Obrigatório para Pix)',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 16),
+
+        _buildTextFormField(
+          label: 'Nome Completo',
+          initialValue: _pixFormData.customerName,
+          onChanged: (v) => _pixFormData.customerName = v.trim(),
+          validator: (v) => (v?.isEmpty ?? true) ? 'O nome é obrigatório.' : null,
+          keyboardType: TextInputType.name,
+        ),
+        const SizedBox(height: 12),
+
+        _buildTextFormField(
+          label: 'E-mail',
+          initialValue: _pixFormData.customerEmail,
+          onChanged: (v) => _pixFormData.customerEmail = v.trim(),
+          validator: (v) {
+            if (v?.isEmpty ?? true) {
+              return 'O e-mail é obrigatório.';
+            }
+            if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v!)) {
+              return 'E-mail inválido.';
+            }
+            return null;
+          },
+          keyboardType: TextInputType.emailAddress,
+        ),
+        const SizedBox(height: 12),
+
+        _buildTextFormField(
+          label: 'CPF ou CNPJ (somente números)',
+          initialValue: _pixFormData.customerTaxId,
+          onChanged: (v) => _pixFormData.customerTaxId = v.replaceAll(RegExp(r'\D'), ''), 
+          validator: (v) {
+            final cleaned = v?.replaceAll(RegExp(r'\D'), '') ?? '';
+            if (cleaned.isEmpty) {
+              return 'O documento é obrigatório.';
+            }
+            if (cleaned.length != 11 && cleaned.length != 14) {
+              return 'Documento inválido (11 ou 14 dígitos).';
+            }
+            return null;
+          },
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        ),
+        const SizedBox(height: 12),
+
+        _buildTextFormField(
+          label: 'Telefone (DDD + Número)',
+          initialValue: _pixFormData.customerCellphone,
+          onChanged: (v) => _pixFormData.customerCellphone = v.replaceAll(RegExp(r'\D'), ''), 
+          validator: (v) {
+            final cleaned = v?.replaceAll(RegExp(r'\D'), '') ?? '';
+            if (cleaned.length < 10 || cleaned.length > 11) {
+              return 'Telefone inválido (mínimo 10, máximo 11 dígitos).';
+            }
+            return null;
+          },
+          keyboardType: TextInputType.phone,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly], 
+        ),
+        
+        const SizedBox(height: 24),
+      ],
+    ),
+  );
+}
+
+  Widget _buildStep4PixDisplay() {
+    if (_pixResponse == null) {
+      return const Center(child: Text('Gere o Pix para visualizá-lo.'));
+    }
+
+    String rawBase64 = _pixResponse!.brCodeBase64;
+    if (rawBase64.startsWith('data:image/png;base64,')) {
+      rawBase64 = rawBase64.substring('data:image/png;base64,'.length);
+    }
+
+    final qrCodeBytes = base64Decode(rawBase64);
+    final String pixCode = _pixResponse!.brCode;
+
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              'Pague sua comanda via Pix',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Use seu aplicativo bancário para escanear:',
+              style: TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 24),
+
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300, width: 2),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Image.memory(
+                qrCodeBytes,
+                width: 200,
+                height: 200,
+                errorBuilder: (context, error, stackTrace) {
+                  return QrImageView(
+                    data: pixCode,
+                    version: QrVersions.auto,
+                    size: 200.0,
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 32),
+
+            const Text(
+              'Ou copie a chave Pix (Copia e Cola):',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            InkWell(
+              onTap: () {
+                Clipboard.setData(ClipboardData(text: pixCode));
+                _showSnackBar('Código Pix Copia e Cola copiado!', isSuccess: true);
+              },
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        pixCode,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.blue.shade800,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.copy, size: 18, color: Colors.blue),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            ElevatedButton.icon(
+              onPressed: _handleSimulatePayment,
+              icon: const Icon(Icons.bug_report, size: 24),
+              label: const Text(
+                'SIMULAR PAGAMENTO',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange.shade700,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                elevation: 4,
+              ),
+            ),
+
+            const SizedBox(height: 32),
+
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.watch_later_outlined, size: 20, color: Colors.orange),
+                SizedBox(width: 8),
+                Text(
+                  'Aguardando a confirmação do pagamento...',
+                  style: TextStyle(fontStyle: FontStyle.italic, color: Colors.orange),
+                ),
+              ],
+            ),
+            const SizedBox(height: 40),
+          ],
+        ),
       ),
     );
   }
@@ -683,34 +957,61 @@ class _PaymentScreenState extends State<PaymentScreen> {
             : StepState.indexed,
       ),
       Step(
-        title: const Text('Finalizar Pagamento'),
-        subtitle: const Text('Escolha a forma de pagamento'),
-        content: _buildStep2PaymentOptions(),
-        isActive: _currentStep == 1,
-        state: _currentStep == 1 ? StepState.indexed : StepState.disabled,
-      ),
-    ];
-  }
-
-  void _onStepContinue() {
+      title: const Text('Opções de Pagamento'),
+      subtitle: const Text('Escolha a forma de pagamento'),
+      content: _buildStep2PaymentOptions(),
+      isActive: _currentStep == 1,
+      state: _currentStep > 1 ? StepState.complete : StepState.indexed,
+    ),
+    Step(
+      title: const Text('Dados do Pagador'),
+      subtitle: const Text('Informações para o Pix'),
+      content: _buildCustomerData(),
+      isActive: _currentStep == 2,
+      state: _currentStep > 2 || (_currentStep == 2 && _formKey.currentState?.validate() == true)
+          ? StepState.complete : StepState.indexed,
+    ),
+    Step(
+      title: const Text('Pagar com Pix'),
+      subtitle: const Text('Escanear ou Copiar'),
+      content: _buildStep4PixDisplay(),
+      isActive: _currentStep == 3,
+      state: _pixResponse != null ? StepState.complete : StepState.indexed,
+    ),
+  ];
+}
+     
+  void _onStepContinue() async {
     if (_currentStep == 0) {
-      if (_selectedTicket != null && _ticketDetail != null) {
-        setState(() => _currentStep = 1);
-      } else {
-        _showSnackBar('Aguarde o carregamento dos detalhes da comanda.', isError: true);
-      }
+    if (_selectedTicket != null && _ticketDetail != null) {
+      setState(() => _currentStep = 1);
     } else {
-      _handlePaymentProcessing();
+      _showSnackBar('Selecione e carregue a comanda.', isError: true);
     }
+  } else if (_currentStep == 1) {
+    setState(() => _currentStep = 2);
+  } else if (_currentStep == 2) {
+    if (_formKey.currentState!.validate()) {
+        _handlePaymentProcessing();
+    } else {
+        _showSnackBar('Preencha todos os dados corretamente para gerar o Pix.', isError: true);
+    }
+} else if (_currentStep == 3) {
+    if (_pixResponse != null && mounted && Navigator.canPop(context)) {
+        Navigator.pop(context, true); 
+    }
+  }
   }
 
   void _onStepCancel() {
+  setState(() {
     if (_currentStep > 0) {
-      setState(() => _currentStep -= 1);
+      _currentStep -= 1;
     } else {
       Navigator.pop(context);
     }
-  }
+  });
+}
 
   @override
   Widget build(BuildContext context) {

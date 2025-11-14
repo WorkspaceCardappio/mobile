@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart' hide Category;
 import 'package:http/http.dart' as http;
 
 import '../core/constants.dart';
@@ -9,8 +10,15 @@ import '../model/product.dart';
 import '../model/split_orders_dto.dart';
 import '../model/ticket.dart';
 
+import '../model/abacate_pix_responseDTO.dart';
+import '../model/pix_payment_request_dto.dart'; 
+
+
 class ApiService {
   final http.Client _client;
+
+  static const String kPixPaymentEndpoint = 'http://10.0.2.2:8080/api/payments/pix';
+  static const String kPixSimulateEndpoint = 'http://10.0.2.2:8080/api/payments/pix/simulate';
 
   ApiService({http.Client? client}) : _client = client ?? http.Client();
 
@@ -163,10 +171,62 @@ class ApiService {
     }
   }
 
-  Future<bool> payTicket(String ticketId) async {
+ Future<AbacatePixResponseDTO?> createPixPayment(PixPaymentRequestDTO request) async {
+    final url = Uri.parse(kPixPaymentEndpoint);
 
-    await Future.delayed(const Duration(seconds: 1));
-    return true;
+    try {
+      final response = await _client.post(
+        url,
+        headers: {'Content-Type': 'application/json; charset=UTF-8'},
+        body: jsonEncode(request.toJson()),
+      );
 
+      if (response.statusCode == 201) {
+        final jsonResponse = jsonDecode(utf8.decode(response.bodyBytes));
+        return AbacatePixResponseDTO.fromJson(jsonResponse); 
+      } 
+      
+      else {
+        if (kDebugMode) {
+          print('Falha na API Pix: Status ${response.statusCode}');
+          print('Body de resposta: ${response.body}');
+        }
+        
+        final responseBody = utf8.decode(response.bodyBytes);
+        final errorJson = jsonDecode(responseBody);
+        
+        final errorMessage = errorJson['message'] ?? 'Erro desconhecido ao processar pagamento.';
+        
+        throw Exception('Falha ao criar Pix: Status ${response.statusCode}. Mensagem: $errorMessage'); 
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Erro de conexão ao criar Pix: $e');
+      }
+      throw Exception('Erro de rede ao criar Pix: ${e.toString()}');
+    }
+  }
+
+  Future<void> simulatePixPayment(String pixId) async {
+    final endpoint = '$kPixSimulateEndpoint/$pixId';
+    final url = Uri.parse(endpoint);
+
+    try {
+      final response = await _client.post(url);
+
+      if (response.statusCode != 200) {
+        if (kDebugMode) {
+          print('Falha ao simular Pix: Status ${response.statusCode}');
+          print('Body de resposta: ${response.body}');
+        }
+        throw Exception('Falha ao simular Pix: Status ${response.statusCode}');
+      }
+
+    } catch (e) {
+      if (kDebugMode) {
+        print('Erro de conexão ao simular Pix: $e');
+      }
+      throw Exception('Erro de rede ao simular Pix: ${e.toString()}');
+    }
   }
 }

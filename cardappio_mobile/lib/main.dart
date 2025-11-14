@@ -9,6 +9,8 @@ void main() {
 
 class OrderApp extends StatelessWidget {
   const OrderApp({super.key});
+  static const String mainNavigatorRoute = '/main-nav';
+
 
   @override
   Widget build(BuildContext context) {
@@ -16,7 +18,15 @@ class OrderApp extends StatelessWidget {
       title: 'Cardappio Profissional',
       debugShowCheckedModeBanner: false,
       theme: appTheme,
-      home: const MainNavigator(initialIndex: 2),
+      initialRoute: mainNavigatorRoute,
+      routes: {
+        mainNavigatorRoute: (context) {
+          final args = ModalRoute.of(context)?.settings.arguments;
+          final initialIndex = args is int ? args : 2;
+
+          return MainNavigator(initialIndex: initialIndex);
+        },
+      },
     );
   }
 }
