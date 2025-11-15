@@ -1,4 +1,7 @@
+// TODO: Remover após migração completa para AppConfig
 const String kBaseUrl = 'http://10.0.2.2:8080';
+const String kAuthEndpoint = '$kBaseUrl/api/auth';
+const String kServiceAccountLoginEndpoint = '$kAuthEndpoint/service-account/login';
 const String kMenusEndpoint = '$kBaseUrl/menus';
 const String kTicketsEndpoint = '$kBaseUrl/tickets';
 const String kCategoriesEndpoint = '$kBaseUrl/api/categories';

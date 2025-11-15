@@ -1,21 +1,30 @@
+import 'package:cardappio_mobile/core/app_config.dart';
+import 'package:cardappio_mobile/core/auth_service.dart';
 import 'package:cardappio_mobile/core/theme.dart';
 import 'package:cardappio_mobile/view/main_navigator.dart';
 import 'package:flutter/material.dart';
 
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
 
-void main() {
-  runApp(const OrderApp());
+  await AppConfig.initialize();
+
+  final authService = AuthService();
+  await authService.initialize();
+
+  runApp(OrderApp(authService: authService));
 }
 
 class OrderApp extends StatelessWidget {
-  const OrderApp({super.key});
-  static const String mainNavigatorRoute = '/main-nav';
+  final AuthService authService;
 
+  const OrderApp({super.key, required this.authService});
+  static const String mainNavigatorRoute = '/main-nav';
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Cardappio Profissional',
+      title: 'Cardappio Profissional - ${AppConfig.environmentName}',
       debugShowCheckedModeBanner: false,
       theme: appTheme,
       initialRoute: mainNavigatorRoute,
@@ -24,7 +33,7 @@ class OrderApp extends StatelessWidget {
           final args = ModalRoute.of(context)?.settings.arguments;
           final initialIndex = args is int ? args : 2;
 
-          return MainNavigator(initialIndex: initialIndex);
+          return MainNavigator(initialIndex: initialIndex, authService: authService);
         },
       },
     );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/auth_service.dart';
 import '../data/api_service.dart';
 import '../model/cart_item.dart';
 import '../model/category.dart';
@@ -18,7 +19,13 @@ import 'screens/ticket/ticket_screen.dart';
 
 class MainNavigator extends StatefulWidget {
   final int initialIndex;
-  const MainNavigator({super.key, this.initialIndex = 0});
+  final AuthService authService;
+
+  const MainNavigator({
+    super.key,
+    this.initialIndex = 0,
+    required this.authService,
+  });
 
   @override
   State<MainNavigator> createState() => _MainNavigatorState();
@@ -36,7 +43,7 @@ class _MainNavigatorState extends State<MainNavigator>
   @override
   void initState() {
     super.initState();
-    _apiService = ApiService();
+    _apiService = ApiService(authService: widget.authService);
     _selectedIndex = widget.initialIndex;
     _selectedCategoryName = '';
     _initializeScreens();
