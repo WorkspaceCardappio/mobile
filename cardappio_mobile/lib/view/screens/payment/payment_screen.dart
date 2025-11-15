@@ -7,7 +7,7 @@ import 'dart:convert';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../model/abacate_pix_responseDTO.dart';
-import '../../../model/pix_form_data.dart'; 
+import '../../../model/pix_form_data.dart';
 import '../../../model/pix_payment_request_dto.dart';
 import '../../../model/ticket_item.dart' hide ProductOrder;
 
@@ -35,8 +35,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
   final TextEditingController _partialController = TextEditingController();
 
   final PixFormData _pixFormData = PixFormData(
-    customerName: '', customerEmail: '', customerTaxId: '', customerCellphone: '',
+    customerName: '',
+    customerEmail: '',
+    customerTaxId: '',
+    customerCellphone: '',
   );
+
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   AbacatePixResponseDTO? _pixResponse;
 
@@ -84,68 +88,72 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   void _handlePaymentProcessing() async {
     final double grandTotal = _ticketDetail?.calculatedTotal ?? 0.0;
-  
-  double amountToPay = (_paymentOption == 'total') 
-      ? grandTotal 
-      : double.tryParse(_partialController.text.replaceAll(',', '.')) ?? 0.0;
-  
-  if (_selectedTicket == null || amountToPay <= 0) {
-    _showSnackBar('Selecione uma comanda e/ou valor válido.', isError: true);
-    return;
-  }
-  
-  if (!_formKey.currentState!.validate()) {
-    _showSnackBar('Preencha todos os dados do pagador corretamente.', isError: true);
-    return;
-  }
-  
-  final pixRequest = PixPaymentRequestDTO(
-    ticketId: _selectedTicket!.id.toString(), 
-    description: 'Comanda #${_selectedTicket!.number}',
-    amount: amountToPay,
-    customerData: _pixFormData, 
-  );
 
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) => const Center(
-      child: Card(
-        child: Padding(
-          padding: EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('Gerando Pix...'),
-            ],
+    double amountToPay = (_paymentOption == 'total')
+        ? grandTotal
+        : double.tryParse(_partialController.text.replaceAll(',', '.')) ?? 0.0;
+
+    if (_selectedTicket == null || amountToPay <= 0) {
+      _showSnackBar('Selecione uma comanda e/ou valor válido.', isError: true);
+      return;
+    }
+
+
+
+    _pixFormData
+      ..customerName = 'CardAppio Pagador'
+      ..customerEmail = 'pagador@cardappio.com'
+      ..customerTaxId = '47061786817'
+      ..customerCellphone = '11987654321';
+
+    final pixRequest = PixPaymentRequestDTO(
+      ticketId: _selectedTicket!.id.toString(),
+      description: 'Comanda #${_selectedTicket!.number}',
+      amount: amountToPay,
+      customerData: _pixFormData,
+    );
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Gerando Pix...'),
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
+    );
 
-  try {
-    final response = await widget.apiService.createPixPayment(pixRequest);
+    try {
+      final response = await widget.apiService.createPixPayment(pixRequest);
 
-    if (!mounted) return;
-    Navigator.pop(context); 
+      if (!mounted) return;
+      Navigator.pop(context);
 
-    if (response != null && response.status == 'PENDING') {
-      setState(() {
-        _pixResponse = response;
-        _currentStep = 3; 
-      });
-      _showSnackBar('Pix gerado com sucesso! Aguardando pagamento.', isSuccess: true);
-    } else {
-      _showSnackBar('Falha ao gerar Pix. Verifique a resposta da API.', isError: true);
+      if (response != null && response.status == 'PENDING') {
+        setState(() {
+          _pixResponse = response;
+          _currentStep = 2;
+        });
+        _showSnackBar('Pix gerado com sucesso! Aguardando pagamento.', isSuccess: true);
+      } else {
+        _showSnackBar('Falha ao gerar Pix. Verifique a resposta da API.', isError: true);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      _showSnackBar('Erro de comunicação: ${e.toString().split(':').last.trim()}',
+          isError: true);
     }
-  } catch (e) {
-    if (!mounted) return;
-    Navigator.pop(context); 
-    _showSnackBar('Erro de comunicação: ${e.toString().split(':').last.trim()}', isError: true);
-  }
   }
 
   void _handleSimulatePayment() async {
@@ -165,30 +173,34 @@ class _PaymentScreenState extends State<PaymentScreen> {
       if (!mounted) return;
       Navigator.pop(context);
 
-      _showSnackBar('Simulação de pagamento APROVADA! O Webhook atualizou a Comanda.', isSuccess: true);
+      _showSnackBar('Pagamento confirmado.',
+          isSuccess: true);
 
       Future.delayed(const Duration(seconds: 1), () {
         if (mounted) {
           Navigator.of(context).pushNamedAndRemoveUntil(
-              OrderApp.mainNavigatorRoute,
-                  (Route<dynamic> route) => false,
-          arguments: 2);
+              OrderApp.mainNavigatorRoute, (Route<dynamic> route) => false,
+              arguments: 2);
         }
       });
     } catch (e) {
       if (!mounted) return;
       Navigator.pop(context);
-      _showSnackBar('Falha na Simulação: ${e.toString().split(':').last.trim()}', isError: true);
+      _showSnackBar(
+          'Falha na Simulação: ${e.toString().split(':').last.trim()}', isError: true);
     }
   }
 
-  void _showSnackBar(String message, {bool isError = false, bool isSuccess = false}) {
+  void _showSnackBar(String message,
+      {bool isError = false, bool isSuccess = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
             Icon(
-              isSuccess ? Icons.check_circle : (isError ? Icons.error : Icons.info),
+              isSuccess
+                  ? Icons.check_circle
+                  : (isError ? Icons.error : Icons.info),
               color: Colors.white,
             ),
             const SizedBox(width: 12),
@@ -204,104 +216,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
-  Widget _buildTextFormField({
-  required String label,
-  required String initialValue,
-  required ValueChanged<String> onChanged,
-  required FormFieldValidator<String> validator,
-  TextInputType keyboardType = TextInputType.text,
-  List<TextInputFormatter>? inputFormatters,
-}) {
-  return TextFormField(
-    initialValue: initialValue,
-    onChanged: onChanged,
-    validator: validator,
-    keyboardType: keyboardType,
-    inputFormatters: inputFormatters,
-    decoration: InputDecoration(
-      labelText: label,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-    ),
-  );
-}
-
-Widget _buildCustomerData() {
-  return Form(
-    key: _formKey, 
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Dados do Pagador (Obrigatório para Pix)',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 16),
-
-        _buildTextFormField(
-          label: 'Nome Completo',
-          initialValue: _pixFormData.customerName,
-          onChanged: (v) => _pixFormData.customerName = v.trim(),
-          validator: (v) => (v?.isEmpty ?? true) ? 'O nome é obrigatório.' : null,
-          keyboardType: TextInputType.name,
-        ),
-        const SizedBox(height: 12),
-
-        _buildTextFormField(
-          label: 'E-mail',
-          initialValue: _pixFormData.customerEmail,
-          onChanged: (v) => _pixFormData.customerEmail = v.trim(),
-          validator: (v) {
-            if (v?.isEmpty ?? true) {
-              return 'O e-mail é obrigatório.';
-            }
-            if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v!)) {
-              return 'E-mail inválido.';
-            }
-            return null;
-          },
-          keyboardType: TextInputType.emailAddress,
-        ),
-        const SizedBox(height: 12),
-
-        _buildTextFormField(
-          label: 'CPF ou CNPJ (somente números)',
-          initialValue: _pixFormData.customerTaxId,
-          onChanged: (v) => _pixFormData.customerTaxId = v.replaceAll(RegExp(r'\D'), ''), 
-          validator: (v) {
-            final cleaned = v?.replaceAll(RegExp(r'\D'), '') ?? '';
-            if (cleaned.isEmpty) {
-              return 'O documento é obrigatório.';
-            }
-            if (cleaned.length != 11 && cleaned.length != 14) {
-              return 'Documento inválido (11 ou 14 dígitos).';
-            }
-            return null;
-          },
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        ),
-        const SizedBox(height: 12),
-
-        _buildTextFormField(
-          label: 'Telefone (DDD + Número)',
-          initialValue: _pixFormData.customerCellphone,
-          onChanged: (v) => _pixFormData.customerCellphone = v.replaceAll(RegExp(r'\D'), ''), 
-          validator: (v) {
-            final cleaned = v?.replaceAll(RegExp(r'\D'), '') ?? '';
-            if (cleaned.length < 10 || cleaned.length > 11) {
-              return 'Telefone inválido (mínimo 10, máximo 11 dígitos).';
-            }
-            return null;
-          },
-          keyboardType: TextInputType.phone,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly], 
-        ),
-        
-        const SizedBox(height: 24),
-      ],
-    ),
-  );
-}
 
   Widget _buildStep4PixDisplay() {
     if (_pixResponse == null) {
@@ -353,44 +267,6 @@ Widget _buildCustomerData() {
               ),
             ),
             const SizedBox(height: 32),
-
-            const Text(
-              'Ou copie a chave Pix (Copia e Cola):',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            InkWell(
-              onTap: () {
-                Clipboard.setData(ClipboardData(text: pixCode));
-                _showSnackBar('Código Pix Copia e Cola copiado!', isSuccess: true);
-              },
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue.shade200),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        pixCode,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.blue.shade800,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Icon(Icons.copy, size: 18, color: Colors.blue),
-                  ],
-                ),
-              ),
-            ),
-
             const SizedBox(height: 24),
 
             ElevatedButton.icon(
@@ -627,7 +503,8 @@ Widget _buildCustomerData() {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.receipt_long, size: 18, color: Colors.grey.shade600),
+                    Icon(Icons.receipt_long,
+                        size: 18, color: Colors.grey.shade600),
                     const SizedBox(width: 8),
                     Text(
                       'Itens do Pedido',
@@ -651,9 +528,13 @@ Widget _buildCustomerData() {
                     child: Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .primary
+                                .withOpacity(0.1),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
@@ -801,7 +682,6 @@ Widget _buildCustomerData() {
 
         const SizedBox(height: 12),
 
-
         _buildPaymentOptionCard(
           title: 'Pagamento Parcial',
           subtitle: 'Pagar apenas uma parte do valor',
@@ -809,7 +689,6 @@ Widget _buildCustomerData() {
           icon: Icons.account_balance_wallet,
           color: Colors.blue.shade600,
         ),
-
 
         if (_paymentOption == 'partial')
           Container(
@@ -825,7 +704,8 @@ Widget _buildCustomerData() {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.info_outline, size: 18, color: Colors.blue.shade700),
+                    Icon(Icons.info_outline,
+                        size: 18, color: Colors.blue.shade700),
                     const SizedBox(width: 8),
                     Text(
                       'Informe o valor a pagar',
@@ -839,7 +719,8 @@ Widget _buildCustomerData() {
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _partialController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
                   ],
@@ -868,7 +749,8 @@ Widget _buildCustomerData() {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: Colors.blue.shade600, width: 2),
+                      borderSide:
+                      BorderSide(color: Colors.blue.shade600, width: 2),
                     ),
                   ),
                 ),
@@ -909,7 +791,8 @@ Widget _buildCustomerData() {
                 color: isSelected ? color.withOpacity(0.2) : Colors.grey.shade200,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: isSelected ? color : Colors.grey.shade600, size: 24),
+              child: Icon(icon,
+                  color: isSelected ? color : Colors.grey.shade600, size: 24),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -957,61 +840,50 @@ Widget _buildCustomerData() {
             : StepState.indexed,
       ),
       Step(
-      title: const Text('Opções de Pagamento'),
-      subtitle: const Text('Escolha a forma de pagamento'),
-      content: _buildStep2PaymentOptions(),
-      isActive: _currentStep == 1,
-      state: _currentStep > 1 ? StepState.complete : StepState.indexed,
-    ),
-    Step(
-      title: const Text('Dados do Pagador'),
-      subtitle: const Text('Informações para o Pix'),
-      content: _buildCustomerData(),
-      isActive: _currentStep == 2,
-      state: _currentStep > 2 || (_currentStep == 2 && _formKey.currentState?.validate() == true)
-          ? StepState.complete : StepState.indexed,
-    ),
-    Step(
-      title: const Text('Pagar com Pix'),
-      subtitle: const Text('Escanear ou Copiar'),
-      content: _buildStep4PixDisplay(),
-      isActive: _currentStep == 3,
-      state: _pixResponse != null ? StepState.complete : StepState.indexed,
-    ),
-  ];
-}
-     
+        title: const Text('Opções de Pagamento'),
+        subtitle: const Text('Escolha a forma de pagamento'),
+        content: _buildStep2PaymentOptions(),
+        isActive: _currentStep == 1,
+        state: _currentStep > 1 ? StepState.complete : StepState.indexed,
+      ),
+      // 💡 Step 'Dados do Pagador' REMOVIDO
+      Step(
+        title: const Text('Pagar com Pix'),
+        subtitle: const Text('Escanear ou Copiar'),
+        content: _buildStep4PixDisplay(),
+        isActive: _currentStep == 2, // 💡 O Step 3 agora é o Step 2
+        state: _pixResponse != null ? StepState.complete : StepState.indexed,
+      ),
+    ];
+  }
+
   void _onStepContinue() async {
     if (_currentStep == 0) {
-    if (_selectedTicket != null && _ticketDetail != null) {
-      setState(() => _currentStep = 1);
-    } else {
-      _showSnackBar('Selecione e carregue a comanda.', isError: true);
+      if (_selectedTicket != null && _ticketDetail != null) {
+        setState(() => _currentStep = 1);
+      } else {
+        _showSnackBar('Selecione e carregue a comanda.', isError: true);
+      }
+    } else if (_currentStep == 1) {
+
+      _handlePaymentProcessing();
+    } else if (_currentStep == 2) {
+
+      if (_pixResponse != null && mounted && Navigator.canPop(context)) {
+        Navigator.pop(context, true);
+      }
     }
-  } else if (_currentStep == 1) {
-    setState(() => _currentStep = 2);
-  } else if (_currentStep == 2) {
-    if (_formKey.currentState!.validate()) {
-        _handlePaymentProcessing();
-    } else {
-        _showSnackBar('Preencha todos os dados corretamente para gerar o Pix.', isError: true);
-    }
-} else if (_currentStep == 3) {
-    if (_pixResponse != null && mounted && Navigator.canPop(context)) {
-        Navigator.pop(context, true); 
-    }
-  }
   }
 
   void _onStepCancel() {
-  setState(() {
-    if (_currentStep > 0) {
-      _currentStep -= 1;
-    } else {
-      Navigator.pop(context);
-    }
-  });
-}
+    setState(() {
+      if (_currentStep > 0) {
+        _currentStep -= 1;
+      } else {
+        Navigator.pop(context);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1030,7 +902,8 @@ Widget _buildCustomerData() {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.error_outline, size: 64, color: Colors.red.shade400),
+                    Icon(Icons.error_outline,
+                        size: 64, color: Colors.red.shade400),
                     const SizedBox(height: 16),
                     Text(
                       'Erro ao carregar comandas',
@@ -1102,11 +975,14 @@ Widget _buildCustomerData() {
               onStepCancel: _onStepCancel,
               steps: _buildSteps(availableTickets),
               controlsBuilder: (context, details) {
-                final isLastStep = details.currentStep == 1;
+
+                final isFinalStep = details.currentStep == 2;
                 final isFirstStep = details.currentStep == 0;
+                final isPaymentOptionsStep = details.currentStep == 1;
 
 
                 if (isFirstStep) {
+
                   return Padding(
                     padding: const EdgeInsets.only(top: 24.0),
                     child: Row(
@@ -1149,7 +1025,7 @@ Widget _buildCustomerData() {
                           onPressed: details.onStepCancel,
                           icon: const Icon(Icons.arrow_back),
                           label: Text(
-                            isLastStep ? 'Voltar' : 'Cancelar',
+                            isFinalStep ? 'Voltar' : 'Cancelar',
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -1174,18 +1050,20 @@ Widget _buildCustomerData() {
                         child: ElevatedButton.icon(
                           onPressed: details.onStepContinue,
                           icon: Icon(
-                            isLastStep ? Icons.check_circle : Icons.arrow_forward,
+                            isFinalStep ? Icons.check_circle : Icons.arrow_forward,
                           ),
                           label: Text(
-                            isLastStep ? 'Finalizar Pagamento' : 'Continuar',
+                            isFinalStep
+                                ? 'Finalizar Pagamento'
+                                : (isPaymentOptionsStep ? 'Gerar Pix' : 'Continuar'),
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: isLastStep
-                                ? Colors.green.shade600
+                            backgroundColor: isFinalStep || isPaymentOptionsStep
+                                ? Colors.green.shade600 // Gerar Pix/Finalizar
                                 : Theme.of(context).colorScheme.primary,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 16),

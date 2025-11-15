@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../../data/api_service.dart';
 import '../../model/split_orders_dto.dart';
 import '../../model/ticket.dart';
+import 'dart:async';
+
+enum SplitDestination { newTicket, existingTicket }
 
 class SplitTicketDialog extends StatefulWidget {
   final TicketDetail currentTicket;
@@ -21,10 +24,21 @@ class _SplitTicketDialogState extends State<SplitTicketDialog> {
   final Set<String> _selectedOrderIds = {};
   bool _isProcessingSplit = false;
 
+  SplitDestination _destination = SplitDestination.newTicket;
+  Ticket? _selectedDestinationTicket;
+  Future<List<Ticket>>? _availableTicketsFuture;
+
   @override
   void initState() {
     super.initState();
 
+    _availableTicketsFuture = _loadAvailableTickets();
+  }
+
+
+  Future<List<Ticket>> _loadAvailableTickets() async {
+    final allTickets = await widget.apiService.fetchAvailableTickets();
+    return allTickets.where((t) => t.id != widget.currentTicket.id).toList();
   }
 
   void _toggleOrderSelection(String orderId) {
@@ -52,12 +66,21 @@ class _SplitTicketDialogState extends State<SplitTicketDialog> {
       return;
     }
 
+    if (_destination == SplitDestination.existingTicket && _selectedDestinationTicket == null) {
+      _showSnackBar('Selecione a comanda de destino.', isError: true);
+      return;
+    }
+
     setState(() => _isProcessingSplit = true);
 
+    final String? ticketIdToSend =
+    _destination == SplitDestination.existingTicket
+        ? _selectedDestinationTicket!.id
+        : null;
 
     final SplitOrdersDTO splitData = SplitOrdersDTO(
       orders: _selectedOrderIds,
-      ticket: null,
+      ticket: ticketIdToSend,
     );
 
     try {
@@ -69,7 +92,6 @@ class _SplitTicketDialogState extends State<SplitTicketDialog> {
       _showSnackBar('✅ Divisão realizada com sucesso!');
       if (mounted) {
         Navigator.pop(context, true);
-
       }
     } catch (e) {
       _showSnackBar('❌ Erro na divisão: ${e.toString().split(':').last.trim()}', isError: true);
@@ -113,28 +135,17 @@ class _SplitTicketDialogState extends State<SplitTicketDialog> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
 
-                  Text(
-                    'Comanda: #${widget.currentTicket.number}',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: Theme.of(context).colorScheme.primary, // Usa Primary Color
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Total: R\$ ${widget.currentTicket.calculatedTotal.toStringAsFixed(2)}',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: Colors.green.shade600,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  _buildTicketInfo(),
                   Divider(height: 32, thickness: 1, color: Colors.grey.shade300),
 
+                  _buildDestinationSelection(),
+                  const SizedBox(height: 16),
+
                   Text(
-                    '(Será criada uma nova comanda a partir dos pedidos selecionados.)',
+                    'Pedidos a mover:',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.grey.shade700,
-                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -151,6 +162,139 @@ class _SplitTicketDialogState extends State<SplitTicketDialog> {
       ),
     );
   }
+
+  Widget _buildTicketInfo() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Comanda: #${widget.currentTicket.number}',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            color: Theme.of(context).colorScheme.primary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Total: R\$ ${widget.currentTicket.calculatedTotal.toStringAsFixed(2)}',
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+            color: Colors.green.shade600,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDestinationSelection() {
+    return FutureBuilder<List<Ticket>>(
+      future: _availableTicketsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: Padding(
+            padding: EdgeInsets.all(8.0),
+            child: CircularProgressIndicator(),
+          ));
+        }
+
+        final availableTickets = snapshot.data ?? [];
+        final hasAvailableTickets = availableTickets.isNotEmpty;
+
+        if (_destination == SplitDestination.existingTicket && !hasAvailableTickets) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              setState(() {
+                _destination = SplitDestination.newTicket;
+              });
+            }
+          });
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Destino dos Pedidos:',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            RadioListTile<SplitDestination>(
+              title: const Text('Criar Nova Comanda'),
+              subtitle: const Text('Os pedidos selecionados iniciarão uma comanda nova.'),
+              value: SplitDestination.newTicket,
+              groupValue: _destination,
+              onChanged: (SplitDestination? value) {
+                if (value != null) {
+                  setState(() {
+                    _destination = value;
+                  });
+                }
+              },
+            ),
+
+            RadioListTile<SplitDestination>(
+              title: Text(
+                'Mover para Comanda Existente ${!hasAvailableTickets ? '(Nenhuma disponível)' : ''}',
+                style: TextStyle(
+                  color: !hasAvailableTickets ? Colors.grey : null,
+                ),
+              ),
+              subtitle: const Text('Mover para outra comanda já aberta.'),
+              value: SplitDestination.existingTicket,
+              groupValue: _destination,
+              onChanged: hasAvailableTickets ? (SplitDestination? value) {
+                if (value != null) {
+                  setState(() {
+                    _destination = value;
+                    if (_selectedDestinationTicket == null && availableTickets.isNotEmpty) {
+                      _selectedDestinationTicket = availableTickets.first;
+                    }
+                  });
+                }
+              } : null,
+            ),
+
+
+            if (_destination == SplitDestination.existingTicket && hasAvailableTickets)
+              Padding(
+                padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 8.0),
+                child: DropdownButtonFormField<Ticket>(
+                  decoration: InputDecoration(
+                    labelText: 'Selecione a Comanda Destino',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  value: _selectedDestinationTicket,
+                  items: availableTickets.map((ticket) {
+                    return DropdownMenuItem<Ticket>(
+                      value: ticket,
+                      child: Text('Comanda #${ticket.number} (R\$ ${ticket.calculatedTotal.toStringAsFixed(2)})'),
+                    );
+                  }).toList(),
+                  onChanged: (Ticket? newValue) {
+                    setState(() {
+                      _selectedDestinationTicket = newValue;
+                    });
+                  },
+                  validator: (value) {
+                    if (value == null) {
+                      return 'Selecione uma comanda';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+
+            const SizedBox(height: 16),
+          ],
+        );
+      },
+    );
+  }
+
 
   Widget _buildHeader(BuildContext context) {
     return Container(
@@ -191,7 +335,6 @@ class _SplitTicketDialogState extends State<SplitTicketDialog> {
       );
     }
 
-    final Color primaryColor = Theme.of(context).colorScheme.primary;
     final Color accentColor = Colors.orange.shade600;
 
 
@@ -267,6 +410,17 @@ class _SplitTicketDialogState extends State<SplitTicketDialog> {
 
     final Color primaryColor = Theme.of(context).colorScheme.primary;
 
+
+    String buttonText;
+    if (_isProcessingSplit) {
+      buttonText = 'Processando...';
+    } else if (_destination == SplitDestination.newTicket) {
+      buttonText = 'Criar Nova Comanda';
+    } else {
+      buttonText = 'Mover para Comanda Existente';
+    }
+
+
     return Padding(
       padding: const EdgeInsets.all(24.0),
       child: Row(
@@ -297,7 +451,7 @@ class _SplitTicketDialogState extends State<SplitTicketDialog> {
                 ),
               )
                   : const Icon(Icons.send_rounded, size: 24),
-              label: Text(_isProcessingSplit ? 'Processando...' : 'Criar Nova Comanda'),
+              label: Text(buttonText),
               style: ElevatedButton.styleFrom(
                 backgroundColor: primaryColor,
                 foregroundColor: Colors.white,

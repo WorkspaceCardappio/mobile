@@ -46,13 +46,14 @@ class AggregatedOrder {
 class Ticket {
   final String id;
   final int number;
-  final double total;
+  // 💡 MUDANÇA: 'total' foi renomeado para 'calculatedTotal'
+  final double calculatedTotal;
   final DateTime createdAt;
 
   Ticket({
     required this.id,
     required this.number,
-    required this.total,
+    required this.calculatedTotal, // Renomeado
     required this.createdAt,
   });
 
@@ -79,7 +80,8 @@ class Ticket {
     return Ticket(
       id: id,
       number: ticketNumber,
-      total: (json['total'] as num? ?? 0.0).toDouble(),
+      // 💡 Mapeia o campo 'total' da API para 'calculatedTotal'
+      calculatedTotal: (json['total'] as num? ?? 0.0).toDouble(),
       createdAt: createdAt,
     );
   }
@@ -92,27 +94,32 @@ class TicketDetail extends Ticket {
   TicketDetail({
     required super.id,
     required super.number,
-
     required super.createdAt,
     required this.orders,
   }) : super(
-
-    total: orders.fold(0.0, (sum, order) => sum + order.subtotal),
+    // 💡 Usa a soma dos subtotais para o valor 'calculatedTotal' do super
+    calculatedTotal: orders.fold(0.0, (sum, order) => sum + order.subtotal),
   );
 
   @override
   double get calculatedTotal {
+    // 💡 O getter é mantido, mas é redundante e deve ser o único nome usado
     return orders.fold(0.0, (sum, order) => sum + order.subtotal);
   }
 
   factory TicketDetail.fromJson(Map<String, dynamic> json) {
+    // ⚠️ ATENÇÃO: Se usar TicketDetail.fromJson, ele herdará o calculatedTotal
+    // do Ticket.fromJson, que pode estar incorreto para um TicketDetail.
+    // Recomenda-se usar apenas TicketDetail.fromBackendFlutterTicketJson
+    // ou garantir que TicketDetail.fromJson calcule o total corretamente.
+
     final baseTicket = Ticket.fromJson(json);
 
     return TicketDetail(
       id: baseTicket.id,
       number: baseTicket.number,
       createdAt: baseTicket.createdAt,
-      orders: [],
+      orders: [], // Dados de orders perdidos aqui, use o método fromBackendFlutterTicketJson
     );
   }
 
@@ -145,7 +152,6 @@ class TicketDetail extends Ticket {
       number: baseTicket.number,
       createdAt: baseTicket.createdAt,
       orders: aggregatedOrders,
-
     );
   }
 }

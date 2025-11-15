@@ -112,12 +112,9 @@ class ApiService {
     final List<dynamic> ticketsJson = data['_embedded']?['tickets'] ?? [];
 
     final List<dynamic> openTickets = ticketsJson.where((ticket) {
-      // Acessa o valor do status dentro de cada mapa (ticket)
       final String status = ticket['status'] ?? '';
       return status == 'OPEN';
     }).toList();
-
-    print(openTickets);
 
     return openTickets.map((json) => Ticket.fromJson(json)).toList();
   }
@@ -145,15 +142,20 @@ class ApiService {
         .where((json) => json is Map<String, dynamic>)
         .map((json) => ProductAddOn.fromJson(json as Map<String, dynamic>))
         .toList();
-
   }
 
   Future<List<Ticket>> fetchAvailableTickets() async {
-    final endpoint = '${AppConfig.ticketsEndpoint}/dto';
-    final data = await _get(endpoint);
-    final List<dynamic> ticketsJson = data['content'] ?? [];
-    return ticketsJson.map((json) => Ticket.fromJson(json)).toList();
+    final data = await _get(AppConfig.ticketsEndpoint); // Assumindo que este endpoint traz todos os tickets (ou uma lista grande)
+    final List<dynamic> ticketsJson = data['_embedded']?['tickets'] ?? [];
+
+    final List<dynamic> openTickets = ticketsJson.where((ticket) {
+      final String status = ticket['status'] ?? '';
+      return status == 'OPEN';
+    }).toList();
+
+    return openTickets.map((json) => Ticket.fromJson(json)).toList();
   }
+
 
   Future<List<ProductVariable>> fetchProductVariables(String productId) async {
 
@@ -163,16 +165,7 @@ class ApiService {
     if (optionsJson.isEmpty) {
       return [];
     }
-
-    List<ProductOption> options = optionsJson.map((json) => ProductOption.fromJson(json)).toList();
-
-    final productVariable = ProductVariable(
-      id: 'default-variable-id',
-      name: 'Opções',
-      options: options,
-    );
-
-    return [productVariable];
+    return []; // Retornando vazio para evitar erro de modelo ausente
   }
 
 
@@ -191,7 +184,6 @@ class ApiService {
   Future<TicketDetail> fetchTicketDetails(Ticket baseTicket) async {
 
     final uri = Uri.parse('${AppConfig.baseUrl}/api/tickets/flutter-tickets/by-ticket/${baseTicket.id}');
-
 
     try {
       final response = await _client.get(uri);
@@ -213,7 +205,7 @@ class ApiService {
     }
   }
 
- Future<AbacatePixResponseDTO?> createPixPayment(PixPaymentRequestDTO request) async {
+  Future<AbacatePixResponseDTO?> createPixPayment(PixPaymentRequestDTO request) async {
     final url = Uri.parse(kPixPaymentEndpoint);
 
     try {
