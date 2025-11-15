@@ -19,6 +19,7 @@ class OrderApp extends StatelessWidget {
   final AuthService authService;
 
   const OrderApp({super.key, required this.authService});
+  static const String mainNavigatorRoute = '/main-nav';
 
   @override
   Widget build(BuildContext context) {
@@ -26,10 +27,15 @@ class OrderApp extends StatelessWidget {
       title: 'Cardappio Profissional - ${AppConfig.environmentName}',
       debugShowCheckedModeBanner: false,
       theme: appTheme,
-      home: MainNavigator(
-        initialIndex: 2,
-        authService: authService,
-      ),
+      initialRoute: mainNavigatorRoute,
+      routes: {
+        mainNavigatorRoute: (context) {
+          final args = ModalRoute.of(context)?.settings.arguments;
+          final initialIndex = args is int ? args : 2;
+
+          return MainNavigator(initialIndex: initialIndex, authService: authService);
+        },
+      },
     );
   }
 }

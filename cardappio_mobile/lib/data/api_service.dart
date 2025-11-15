@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart' hide Category;
 import 'package:http/http.dart' as http;
 
 import '../core/app_config.dart';
@@ -9,6 +10,10 @@ import '../model/order_create_dto.dart';
 import '../model/product.dart';
 import '../model/split_orders_dto.dart';
 import '../model/ticket.dart';
+
+import '../model/abacate_pix_responseDTO.dart';
+import '../model/pix_payment_request_dto.dart';
+
 
 class ApiService {
   final http.Client _client;
@@ -32,6 +37,9 @@ class ApiService {
 
     return headers;
   }
+
+  static const String kPixPaymentEndpoint = 'https://cardappio-prod.up.railway.app/api/payments/pix';
+  static const String kPixSimulateEndpoint = 'https://cardappio-prod.up.railway.app/api/payments/pix/simulate';
 
 
   Future<dynamic> _get(String endpoint) async {
@@ -102,7 +110,16 @@ class ApiService {
   Future<List<Ticket>> fetchTickets() async {
     final data = await _get(AppConfig.ticketsEndpoint);
     final List<dynamic> ticketsJson = data['_embedded']?['tickets'] ?? [];
-    return ticketsJson.map((json) => Ticket.fromJson(json)).toList();
+
+    final List<dynamic> openTickets = ticketsJson.where((ticket) {
+      // Acessa o valor do status dentro de cada mapa (ticket)
+      final String status = ticket['status'] ?? '';
+      return status == 'OPEN';
+    }).toList();
+
+    print(openTickets);
+
+    return openTickets.map((json) => Ticket.fromJson(json)).toList();
   }
 
   Future<List<Product>> fetchProductsByCategory(String categoryId) async {
@@ -196,10 +213,62 @@ class ApiService {
     }
   }
 
-  Future<bool> payTicket(String ticketId) async {
+ Future<AbacatePixResponseDTO?> createPixPayment(PixPaymentRequestDTO request) async {
+    final url = Uri.parse(kPixPaymentEndpoint);
 
-    await Future.delayed(const Duration(seconds: 1));
-    return true;
+    try {
+      final response = await _client.post(
+        url,
+        headers: {'Content-Type': 'application/json; charset=UTF-8'},
+        body: jsonEncode(request.toJson()),
+      );
 
+      if (response.statusCode == 201) {
+        final jsonResponse = jsonDecode(utf8.decode(response.bodyBytes));
+        return AbacatePixResponseDTO.fromJson(jsonResponse);
+      }
+
+      else {
+        if (kDebugMode) {
+          print('Falha na API Pix: Status ${response.statusCode}');
+          print('Body de resposta: ${response.body}');
+        }
+
+        final responseBody = utf8.decode(response.bodyBytes);
+        final errorJson = jsonDecode(responseBody);
+
+        final errorMessage = errorJson['message'] ?? 'Erro desconhecido ao processar pagamento.';
+
+        throw Exception('Falha ao criar Pix: Status ${response.statusCode}. Mensagem: $errorMessage');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Erro de conexão ao criar Pix: $e');
+      }
+      throw Exception('Erro de rede ao criar Pix: ${e.toString()}');
+    }
+  }
+
+  Future<void> simulatePixPayment(String pixId) async {
+    final endpoint = '$kPixSimulateEndpoint/$pixId';
+    final url = Uri.parse(endpoint);
+
+    try {
+      final response = await _client.post(url);
+
+      if (response.statusCode != 200) {
+        if (kDebugMode) {
+          print('Falha ao simular Pix: Status ${response.statusCode}');
+          print('Body de resposta: ${response.body}');
+        }
+        throw Exception('Falha ao simular Pix: Status ${response.statusCode}');
+      }
+
+    } catch (e) {
+      if (kDebugMode) {
+        print('Erro de conexão ao simular Pix: $e');
+      }
+      throw Exception('Erro de rede ao simular Pix: ${e.toString()}');
+    }
   }
 }
