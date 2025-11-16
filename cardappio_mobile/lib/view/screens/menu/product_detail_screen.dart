@@ -25,13 +25,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   int _quantity = 1;
   double _currentPrice = 0.0;
-  String? _selectedVariableValue;
+
+
+
+  final Set<String> _selectedVariableValues = {};
+
   final Map<String, int> _selectedAddOnQuantities = {};
   final TextEditingController _observationsController = TextEditingController();
   int _currentStep = 0;
 
   bool get _isStep1Complete =>
-      _productVariables.isEmpty || _selectedVariableValue != null;
+      _productVariables.isEmpty || _selectedVariableValues.isNotEmpty;
 
   @override
   void initState() {
@@ -64,11 +68,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           _selectedAddOnQuantities[addon.id] = 0;
         }
 
-        if (_productVariables.isNotEmpty &&
-            _productVariables.first.options.isNotEmpty) {
-          _selectedVariableValue = _productVariables.first.options.first.id;
-        }
-
         _updateTotal();
       });
     }
@@ -77,14 +76,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   void _updateTotal() {
     double basePrice = widget.product.price;
 
-    if (_selectedVariableValue != null && _productVariables.isNotEmpty) {
-      final selectedOption = _productVariables
-          .expand((v) => v.options)
-          .firstWhere(
-            (opt) => opt.id == _selectedVariableValue,
-        orElse: () => ProductOption(id: '', name: '', priceAdjustment: 0.0),
-      );
-      basePrice += selectedOption.priceAdjustment;
+    if (_selectedVariableValues.isNotEmpty && _productVariables.isNotEmpty) {
+
+      final allOptions = _productVariables.expand((v) => v.options);
+
+
+      for (String selectedId in _selectedVariableValues) {
+        final selectedOption = allOptions.firstWhere(
+              (opt) => opt.id == selectedId,
+          orElse: () => ProductOption(id: '', name: '', priceAdjustment: 0.0),
+        );
+        basePrice += selectedOption.priceAdjustment;
+      }
     }
 
     for (var addon in _productAddOns) {
@@ -190,10 +193,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
           return Column(
             children: [
-
               _buildProductHeader(),
-
-
               Expanded(
                 child: Theme(
                   data: Theme.of(context).copyWith(
@@ -208,19 +208,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     onStepContinue: _onStepContinue,
                     onStepCancel: _onStepCancel,
                     steps: _buildSteps(),
-
-
                     controlsBuilder: (context, details) {
                       final steps = _buildSteps();
-                      final isLastStep = details.currentStep == steps.length - 1;
+                      final isLastStep =
+                          details.currentStep == steps.length - 1;
                       final isFirstStep = details.currentStep == 0;
-
 
                       Widget continueButton = Expanded(
                         child: ElevatedButton.icon(
                           onPressed: details.onStepContinue,
                           icon: Icon(
-                            isLastStep ? Icons.shopping_cart : Icons.arrow_forward,
+                            isLastStep
+                                ? Icons.shopping_cart
+                                : Icons.arrow_forward,
                           ),
                           label: Text(
                             isLastStep ? 'Adicionar ao Carrinho' : 'Continuar',
@@ -243,7 +243,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         ),
                       );
 
-
                       if (isFirstStep) {
                         return Padding(
                           padding: const EdgeInsets.only(top: 24.0),
@@ -252,7 +251,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           ),
                         );
                       }
-
 
                       Widget backButton = Expanded(
                         child: ElevatedButton.icon(
@@ -266,7 +264,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             ),
                           ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).colorScheme.primary,
+                            backgroundColor:
+                            Theme.of(context).colorScheme.primary,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
@@ -298,7 +297,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-
   Widget _buildProductHeader() {
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -316,7 +314,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       ),
       child: Column(
         children: [
-
           Hero(
             tag: 'product-${widget.product.idProduct}',
             child: Container(
@@ -363,8 +360,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               ),
             ),
           ),
-
-
           Container(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -472,7 +467,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         ),
         const SizedBox(height: 16),
         ...variable.options.map((option) {
-          final isSelected = _selectedVariableValue == option.id;
+
+          final isSelected = _selectedVariableValues.contains(option.id);
           final hasAdjustment = option.priceAdjustment != 0;
 
           return Container(
@@ -489,7 +485,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 width: isSelected ? 2 : 1,
               ),
             ),
-            child: RadioListTile<String>(
+
+            child: CheckboxListTile(
               title: Text(
                 option.name,
                 style: TextStyle(
@@ -509,23 +506,27 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 ),
               )
                   : null,
-              value: option.id,
-              groupValue: _selectedVariableValue,
-              onChanged: (String? value) {
+              value: isSelected,
+              onChanged: (bool? value) {
+
                 setState(() {
-                  _selectedVariableValue = value;
+                  if (value == true) {
+                    _selectedVariableValues.add(option.id);
+                  } else {
+                    _selectedVariableValues.remove(option.id);
+                  }
                   _updateTotal();
                 });
               },
               activeColor: Theme.of(context).colorScheme.primary,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            ),
-          );
+              contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              controlAffinity: ListTileControlAffinity.trailing,
+          ));
         }).toList(),
       ],
     );
   }
-
 
   Widget _buildStep2Content() {
     if (_productAddOns.isEmpty) return const SizedBox.shrink();
@@ -587,7 +588,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               color: isSelected ? Colors.orange.shade50 : Colors.grey.shade50,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: isSelected ? Colors.orange.shade300 : Colors.grey.shade300,
+                color:
+                isSelected ? Colors.orange.shade300 : Colors.grey.shade300,
               ),
             ),
             child: Row(
@@ -599,7 +601,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       Text(
                         addon.name,
                         style: TextStyle(
-                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                          fontWeight:
+                          isSelected ? FontWeight.w700 : FontWeight.w600,
                           fontSize: 16,
                         ),
                       ),
@@ -631,7 +634,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         onPressed: quantity > 0
                             ? () {
                           setState(() {
-                            _selectedAddOnQuantities[addon.id] = quantity - 1;
+                            _selectedAddOnQuantities[addon.id] =
+                                quantity - 1;
                             _updateTotal();
                           });
                         }
@@ -674,14 +678,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-
   Widget _buildStep3Content() {
     final modernGreen = Colors.green.shade600;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-
         Row(
           children: [
             Container(
@@ -727,7 +729,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   icon: const Icon(Icons.remove_circle_outline),
                   color: Theme.of(context).colorScheme.primary,
                   iconSize: 32,
-                  onPressed: _quantity > 1 ? () => setState(() => _quantity--) : null,
+                  onPressed:
+                  _quantity > 1 ? () => setState(() => _quantity--) : null,
                 ),
               ),
               Padding(
@@ -756,10 +759,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             ],
           ),
         ),
-
         const SizedBox(height: 24),
-
-
         Row(
           children: [
             Container(
@@ -820,10 +820,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           maxLines: 3,
           maxLength: 200,
         ),
-
         const SizedBox(height: 24),
-
-
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -883,9 +880,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       steps.add(
         Step(
           title: const Text('Opções'),
-          subtitle: const Text('Escolha uma opção'),
+
+          subtitle: const Text('Escolha uma ou mais opções'),
           content: _buildStep1Content(),
           isActive: _currentStep == stepIndex,
+
           state: _isStep1Complete ? StepState.complete : StepState.error,
         ),
       );
@@ -899,7 +898,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           subtitle: const Text('Customize seu pedido'),
           content: _buildStep2Content(),
           isActive: _currentStep == stepIndex,
-          state: _currentStep > stepIndex ? StepState.complete : StepState.indexed,
+          state:
+          _currentStep > stepIndex ? StepState.complete : StepState.indexed,
         ),
       );
       stepIndex++;
@@ -919,10 +919,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   void _onStepContinue() {
+
     if (_currentStep == 0 && !_isStep1Complete) {
-      _showSnackBar('Por favor, selecione uma opção antes de continuar.', isError: true);
+      _showSnackBar('Por favor, selecione pelo menos uma opção.',
+          isError: true);
       return;
     }
+
 
     if (_currentStep < _buildSteps().length - 1) {
       setState(() => _currentStep += 1);
@@ -943,13 +946,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     final Map<String, int> finalAddons = Map.from(_selectedAddOnQuantities)
       ..removeWhere((key, value) => value == 0);
 
+
     Navigator.pop(context, {
       'product_id': widget.product.idProductItem,
       'quantity': _quantity,
       'total_item': (_currentPrice * _quantity),
-      'variable': _selectedVariableValue,
+      'variables': _selectedVariableValues.toList(),
       'addons': finalAddons,
       'observations': _observationsController.text.trim(),
     });
+
   }
 }

@@ -14,7 +14,6 @@ import '../model/ticket.dart';
 import '../model/abacate_pix_responseDTO.dart';
 import '../model/pix_payment_request_dto.dart';
 
-
 class ApiService {
   final http.Client _client;
   final AuthService _authService;
@@ -38,9 +37,10 @@ class ApiService {
     return headers;
   }
 
-  static const String kPixPaymentEndpoint = 'https://cardappio-prod.up.railway.app/api/payments/pix';
-  static const String kPixSimulateEndpoint = 'https://cardappio-prod.up.railway.app/api/payments/pix/simulate';
-
+  static const String kPixPaymentEndpoint =
+      'https://cardappio-prod.up.railway.app/api/payments/pix';
+  static const String kPixSimulateEndpoint =
+      'https://cardappio-prod.up.railway.app/api/payments/pix/simulate';
 
   Future<dynamic> _get(String endpoint) async {
     try {
@@ -55,7 +55,8 @@ class ApiService {
       } else if (response.statusCode == 401) {
         throw Exception('Não autorizado. Token inválido ou expirado.');
       } else {
-        throw Exception('Falha na requisição GET: Status ${response.statusCode}');
+        throw Exception(
+            'Falha na requisição GET: Status ${response.statusCode}');
       }
     } catch (e) {
       throw Exception('Erro de conexão: ${e.toString()}');
@@ -74,7 +75,8 @@ class ApiService {
       if (response.statusCode == 401) {
         throw Exception('Não autorizado. Token inválido ou expirado.');
       } else if (response.statusCode != 201) {
-        throw Exception('Falha ao criar o recurso: Status ${response.statusCode}');
+        throw Exception(
+            'Falha ao criar o recurso: Status ${response.statusCode}');
       }
     } catch (e) {
       throw Exception('Erro de conexão: ${e.toString()}');
@@ -93,13 +95,13 @@ class ApiService {
       if (response.statusCode == 401) {
         throw Exception('Não autorizado. Token inválido ou expirado.');
       } else if (response.statusCode != 200) {
-        throw Exception('Falha na requisição POST: Status ${response.statusCode}. Resposta: ${response.body}');
+        throw Exception(
+            'Falha na requisição POST: Status ${response.statusCode}. Resposta: ${response.body}');
       }
     } catch (e) {
       throw Exception('Erro de conexão: ${e.toString()}');
     }
   }
-
 
   Future<List<Menu>> fetchMenus() async {
     final data = await _get(AppConfig.menusEndpoint);
@@ -121,21 +123,24 @@ class ApiService {
 
   Future<List<Product>> fetchProductsByCategory(String categoryId) async {
     if (categoryId.isEmpty) return [];
-    final endpoint = '${AppConfig.productsEndpoint}/$categoryId/flutter-products';
+    final endpoint =
+        '${AppConfig.productsEndpoint}/$categoryId/flutter-products';
     final List<dynamic> productsJson = await _get(endpoint);
 
     return productsJson.map((json) => Product.fromJson(json)).toList();
   }
 
   Future<List<Category>> fetchCategories(String menuId) async {
-    final endpoint = '${AppConfig.categoriesEndpoint}/$menuId/flutter-categories';
+    final endpoint =
+        '${AppConfig.categoriesEndpoint}/$menuId/flutter-categories';
     final List<dynamic> categoriesJson = await _get(endpoint);
 
     return categoriesJson.map((json) => Category.fromJson(json)).toList();
   }
 
   Future<List<ProductAddOn>> fetchProductAddOns(String productId) async {
-    final endpoint = '${AppConfig.additionalsEndpoint}/$productId/flutter-additionals';
+    final endpoint =
+        '${AppConfig.additionalsEndpoint}/$productId/flutter-additionals';
     final List<dynamic> addOnsJson = await _get(endpoint);
 
     return addOnsJson
@@ -145,7 +150,8 @@ class ApiService {
   }
 
   Future<List<Ticket>> fetchAvailableTickets() async {
-    final data = await _get(AppConfig.ticketsEndpoint); // Assumindo que este endpoint traz todos os tickets (ou uma lista grande)
+    final data = await _get(AppConfig
+        .ticketsEndpoint);
     final List<dynamic> ticketsJson = data['_embedded']?['tickets'] ?? [];
 
     final List<dynamic> openTickets = ticketsJson.where((ticket) {
@@ -158,16 +164,41 @@ class ApiService {
 
 
   Future<List<ProductVariable>> fetchProductVariables(String productId) async {
+    final endpoint =
+        '${AppConfig.productVariablesEndpoint}/$productId/flutter-product-variables';
 
-    final endpoint = '${AppConfig.productVariablesEndpoint}/$productId/flutter-product-variables';
+
     final List<dynamic> optionsJson = await _get(endpoint);
+
 
     if (optionsJson.isEmpty) {
       return [];
     }
-    return []; // Retornando vazio para evitar erro de modelo ausente
-  }
 
+
+    final List<ProductOption> optionsFromApi = optionsJson.map((json) {
+
+      if (json is Map<String, dynamic>) {
+        return ProductOption(
+          id: json['id'] as String,
+          name: json['name'] as String,
+          priceAdjustment: (json['price'] as num).toDouble(),
+        );
+      }
+      return null;
+    })
+        .whereType<ProductOption>()
+        .toList();
+
+
+    final ProductVariable wrappedVariable = ProductVariable(
+      id: 'default_variable_group',
+      name: 'Opções',
+      options: optionsFromApi,
+    );
+
+    return [wrappedVariable];
+  }
 
   Future<void> createOrder(OrderCreateDTO order) async {
     final endpoint = '${AppConfig.ordersEndpoint}/flutter-orders';
@@ -175,21 +206,21 @@ class ApiService {
   }
 
   Future<void> splitTicket(String ticketId, SplitOrdersDTO splitData) async {
-
     final endpoint = '${AppConfig.baseUrl}/api/tickets/split/$ticketId';
 
     await _postVoid(endpoint, splitData.toJson());
   }
 
   Future<TicketDetail> fetchTicketDetails(Ticket baseTicket) async {
-
-    final uri = Uri.parse('${AppConfig.baseUrl}/api/tickets/flutter-tickets/by-ticket/${baseTicket.id}');
+    final uri = Uri.parse(
+        '${AppConfig.baseUrl}/api/tickets/flutter-tickets/by-ticket/${baseTicket.id}');
 
     try {
       final response = await _client.get(uri);
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonResponse = jsonDecode(utf8.decode(response.bodyBytes));
+        final Map<String, dynamic> jsonResponse =
+        jsonDecode(utf8.decode(response.bodyBytes));
 
         return TicketDetail.fromBackendFlutterTicketJson(
           json: jsonResponse,
@@ -198,14 +229,16 @@ class ApiService {
       } else if (response.statusCode == 404) {
         throw Exception('Comanda não encontrada: ID ${baseTicket.id}');
       } else {
-        throw Exception('Falha ao carregar detalhes. Status: ${response.statusCode}');
+        throw Exception(
+            'Falha ao carregar detalhes. Status: ${response.statusCode}');
       }
     } catch (e) {
       throw Exception('Erro de rede: ${e.toString()}');
     }
   }
 
-  Future<AbacatePixResponseDTO?> createPixPayment(PixPaymentRequestDTO request) async {
+  Future<AbacatePixResponseDTO?> createPixPayment(
+      PixPaymentRequestDTO request) async {
     final url = Uri.parse(kPixPaymentEndpoint);
 
     try {
@@ -218,9 +251,7 @@ class ApiService {
       if (response.statusCode == 201) {
         final jsonResponse = jsonDecode(utf8.decode(response.bodyBytes));
         return AbacatePixResponseDTO.fromJson(jsonResponse);
-      }
-
-      else {
+      } else {
         if (kDebugMode) {
           print('Falha na API Pix: Status ${response.statusCode}');
           print('Body de resposta: ${response.body}');
@@ -229,9 +260,11 @@ class ApiService {
         final responseBody = utf8.decode(response.bodyBytes);
         final errorJson = jsonDecode(responseBody);
 
-        final errorMessage = errorJson['message'] ?? 'Erro desconhecido ao processar pagamento.';
+        final errorMessage =
+            errorJson['message'] ?? 'Erro desconhecido ao processar pagamento.';
 
-        throw Exception('Falha ao criar Pix: Status ${response.statusCode}. Mensagem: $errorMessage');
+        throw Exception(
+            'Falha ao criar Pix: Status ${response.statusCode}. Mensagem: $errorMessage');
       }
     } catch (e) {
       if (kDebugMode) {
@@ -255,7 +288,6 @@ class ApiService {
         }
         throw Exception('Falha ao simular Pix: Status ${response.statusCode}');
       }
-
     } catch (e) {
       if (kDebugMode) {
         print('Erro de conexão ao simular Pix: $e');
