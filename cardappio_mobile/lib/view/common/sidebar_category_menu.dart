@@ -58,24 +58,31 @@ class SidebarCategoryMenu extends StatelessWidget {
     );
   }
 
+  Widget _buildBackgroundImageView(String? imageUrl, ColorScheme colorScheme) {
+    // Se imageUrl for null ou vazio, mostra placeholder
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return Container(
+        color: Colors.grey.shade900,
+        child: Center(
+          child: Icon(
+            Icons.image_not_supported,
+            color: Colors.white10,
+            size: 40,
+          ),
+        ),
+      );
+    }
 
-  Widget _buildBackgroundImageView(String imageUrl, ColorScheme colorScheme) {
     return CachedNetworkImage(
       imageUrl: imageUrl,
       fit: BoxFit.cover,
-
-
       placeholder: (context, url) => Center(
         child: CircularProgressIndicator(
           color: Colors.white70,
           strokeWidth: 2.0,
         ),
       ),
-
-
       errorWidget: (context, url, error) {
-
-
         return Container(
           color: Colors.grey.shade900,
           child: Center(
@@ -89,7 +96,6 @@ class SidebarCategoryMenu extends StatelessWidget {
       },
     );
   }
-
 
   Widget _buildCategoryItem(BuildContext context, Category category) {
     final theme = Theme.of(context);
@@ -105,7 +111,6 @@ class SidebarCategoryMenu extends StatelessWidget {
           height: 80,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12.0),
-
             border: isSelected
                 ? Border.all(color: colorScheme.primary, width: 3.0)
                 : null,
@@ -124,21 +129,18 @@ class SidebarCategoryMenu extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-
-                _buildBackgroundImageView(category.image, colorScheme),
-
+                // MUDANÇA CRÍTICA: usar imageUrl ao invés de image
+                _buildBackgroundImageView(category.imageUrl, colorScheme),
 
                 Container(
                   decoration: const BoxDecoration(
                     gradient: LinearGradient(
-
                       colors: [Colors.black54, Colors.black38],
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
                     ),
                   ),
                 ),
-
 
                 Center(
                   child: Padding(
@@ -149,7 +151,6 @@ class SidebarCategoryMenu extends StatelessWidget {
                         color: Colors.white,
                         fontWeight: FontWeight.w800,
                         fontSize: 18,
-
                         shadows: [
                           Shadow(
                             color: Colors.black.withOpacity(0.7),
