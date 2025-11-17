@@ -330,7 +330,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 ),
               ),
               child: CachedNetworkImage(
-                imageUrl: widget.product.image,
+                imageUrl: widget.product.imageUrl ?? widget.product.image,
                 fit: BoxFit.contain,
                 placeholder: (context, url) => Center(
                   child: CircularProgressIndicator(

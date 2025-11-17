@@ -231,7 +231,7 @@ class MenuDetailScreen extends StatelessWidget {
                     child: Stack(
                       children: [
                         CachedNetworkImage(
-                          imageUrl: product.image,
+                          imageUrl: product.imageUrl ?? product.image,
                           fit: BoxFit.cover,
                           width: 100,
                           height: 100,
