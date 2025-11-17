@@ -378,7 +378,7 @@ mixin _CartManager on State<MainNavigator> {
 
     final orderDto = OrderCreateDTO(
       ticket: IdDTO(id: selectedTicket.id),
-      status: EnumDTO(code: "2"),
+      status: EnumDTO(code: "1"),
       items: orderItems,
     );
 
